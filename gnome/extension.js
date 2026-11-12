@@ -17,8 +17,8 @@ import { DESERT_FX_TOP, paintDesert, palmAngle } from './core/desert.js';
 import { CLOUDS, cloudPosition, paintCloud, paintGrass, paintWater } from './core/scene.js';
 import { COAST_HALF, makeCloudMasks } from './core/shapes.js';
 import { createSky, lighting } from './core/sky.js';
-import { solarFrame, solarSchedule } from './core/solar-clock.js';
-import { stillName } from './core/themes.js';
+import { SolarTracker } from './core/solar-clock.js';
+import { layerName, stillName, terrainBlend } from './core/themes.js';
 
 const ANIMATION_INTERVAL_MS = { economy: 125, balanced: 67, smooth: 40, ultra: 20 };
 const SOLAR_INTERVAL = 3_000_000;
@@ -75,8 +75,7 @@ export default class CoastLive extends Extension {
             this._location = new LocalLocation(this.path);
             this._motionStart = GLib.get_monotonic_time();
             this._elapsed = 0;
-            this._coordinates = null;
-            this._schedule = null;
+            this._solar = new SolarTracker();
             this._frame = -1;
             this._stills = [];
             this._prepareSky();
@@ -208,15 +207,11 @@ export default class CoastLive extends Extension {
         if (this._theme === 'coast')
             return;
 
-        const anchors = this._layout.anchors;
-        const high = anchors.findIndex(frame => frame > this._frame);
-        const lower = high < 0 ? anchors.length - 1 : Math.max(0, high - 1);
-        const upper = high < 0 ? lower : high;
-        const opacity = lower === upper ? 0 : Math.round(255 * (this._frame - anchors[lower]) / (anchors[upper] - anchors[lower]));
+        const { lower, upper, opacity } = terrainBlend(this._layout.anchors, this._frame);
         const previous = this._terrainCache;
         const next = new Map();
         const texture = (prefix, slot) => {
-            const name = prefix + '-' + String(slot).padStart(2, '0') + '.png';
+            const name = layerName(prefix, slot);
             if (!next.has(name))
                 next.set(name, previous.get(name) ?? this._loadTexture(this._themeFile(name)));
             return next.get(name);
@@ -237,13 +232,7 @@ export default class CoastLive extends Extension {
     _updateSolarFrame() {
         const time = Date.now();
         const { coordinates } = this._location.resolve(this._settings, time);
-        if (!this._schedule || time < this._schedule.start || time >= this._schedule.end
-            || coordinates.some((value, i) => value !== this._coordinates[i])) {
-            this._schedule = solarSchedule(time, ...coordinates);
-            this._coordinates = coordinates;
-        }
-
-        const frame = solarFrame(time, this._schedule);
+        const frame = this._solar.frameAt(time, ...coordinates);
         if (frame === this._frame) {
             this._syncBackground();
             return false;
@@ -402,10 +391,9 @@ export default class CoastLive extends Extension {
         this._horizon = null;
         this._location = null;
         this._settings = null;
-        this._coordinates = null;
         this._layout = null;
         this._terrainCache = null;
-        this._schedule = null;
+        this._solar = null;
         this._light = null;
     }
 }

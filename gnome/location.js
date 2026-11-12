@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import GLib from 'gi://GLib';
 import {
-    coordinatesForOffset, coordinatesForZone, normalizeZoneName, parseZoneLinks, parseZoneTable,
+    normalizeZoneName, parseZoneLinks, parseZoneTable, resolveCoordinates,
 } from './core/zones.js';
 
 function readText(path) {
@@ -39,12 +39,8 @@ export class LocalLocation {
         if (settings?.get_boolean('manual-location'))
             return { name, coordinates: [settings.get_double('latitude'), settings.get_double('longitude')], source: 'manual' };
 
-        const coordinates = coordinatesForZone(this._zones, this._links, name);
-        if (coordinates)
-            return { name, coordinates, source: 'zone' };
-
         const interval = zone.find_interval(GLib.TimeType.UNIVERSAL, Math.floor(time / 1000));
         const offset = interval < 0 ? 0 : zone.get_offset(interval);
-        return { name, coordinates: coordinatesForOffset(offset), source: 'offset' };
+        return { name, ...resolveCoordinates(this._zones, this._links, name, offset) };
     }
 }

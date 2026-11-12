@@ -107,5 +107,25 @@ export function solarFrame(time, schedule) {
             return Math.min(1999, Math.floor(first + progress * (last - first)));
         }
     }
-    return Math.min(1999, anchors.at(-1)[1]);
+    return Math.min(1999, anchors[anchors.length - 1][1]);
+}
+
+// Keeps today's schedule so that asking for the frame every few seconds is cheap.
+export class SolarTracker {
+    constructor() {
+        this._schedule = null;
+        this._latitude = NaN;
+        this._longitude = NaN;
+    }
+
+    // Lighting frame (0..1999) for a timestamp (ms since epoch) and a location.
+    frameAt(time, latitude, longitude) {
+        if (!this._schedule || time < this._schedule.start || time >= this._schedule.end
+            || latitude !== this._latitude || longitude !== this._longitude) {
+            this._schedule = solarSchedule(time, latitude, longitude);
+            this._latitude = latitude;
+            this._longitude = longitude;
+        }
+        return solarFrame(time, this._schedule);
+    }
 }

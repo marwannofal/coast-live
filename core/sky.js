@@ -85,7 +85,7 @@ function gradientInto(colors, position, out) {
 
 function keyInterval(keys, key) {
     const index = keys.findIndex(([point]) => key < point);
-    if (index < 0) return [keys.at(-1)[1], keys.at(-1)[1], 0];
+    if (index < 0) return [keys[keys.length - 1][1], keys[keys.length - 1][1], 0];
     if (index === 0) return [keys[0][1], keys[0][1], 0];
     const [from, before] = keys[index - 1];
     const [to, after] = keys[index];

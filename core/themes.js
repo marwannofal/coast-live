@@ -14,3 +14,16 @@ export function stillName(frame) {
     const slot = Math.round(frame * (STILL_SLOTS - 1) / (SKY_FRAMES - 1));
     return 'still-' + String(slot * 2).padStart(2, '0') + '.jpg';
 }
+
+// The terrain art exists at fixed lighting anchors (layout.anchors). For any
+// frame, draw layer `lower` fully and layer `upper` on top at `opacity` (0..255).
+export function terrainBlend(anchors, frame) {
+    const high = anchors.findIndex(value => value > frame);
+    const lower = high < 0 ? anchors.length - 1 : Math.max(0, high - 1);
+    const upper = high < 0 ? lower : high;
+    const opacity = lower === upper ? 0
+        : Math.round(255 * (frame - anchors[lower]) / (anchors[upper] - anchors[lower]));
+    return { lower, upper, opacity };
+}
+
+export const layerName = (prefix, slot) => prefix + '-' + String(slot).padStart(2, '0') + '.png';

@@ -53,3 +53,12 @@ export function coordinatesForOffset(offsetSeconds) {
     const longitude = ((offsetSeconds / 240 + 180) % 360 + 360) % 360 - 180;
     return [0, longitude];
 }
+
+// Best-effort coordinates for a time zone: the zone's representative city, or
+// an estimate from the clock offset when the zone is unknown.
+export function resolveCoordinates(zones, links, zoneName, offsetSeconds) {
+    const coordinates = coordinatesForZone(zones, links, zoneName);
+    return coordinates
+        ? { coordinates, source: 'zone' }
+        : { coordinates: coordinatesForOffset(offsetSeconds), source: 'offset' };
+}

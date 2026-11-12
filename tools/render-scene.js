@@ -17,6 +17,7 @@ import { DESERT_FX_TOP, paintDesert, palmAngle } from '../core/desert.js';
 import { CLOUDS, cloudPosition, paintCloud, paintGrass, paintWater } from '../core/scene.js';
 import { COAST_HALF, makeCloudMasks } from '../core/shapes.js';
 import { createSky, lighting } from '../core/sky.js';
+import { layerName, terrainBlend } from '../core/themes.js';
 
 const [theme = 'coast', frameArg = '1000', elapsedArg = '0', outPath = 'scene.png', zoomArg = '1'] = ARGV;
 const frame = Number(frameArg);
@@ -90,15 +91,10 @@ const layer = (file, alpha, x = 0, y = 0) => {
     cr.paintWithAlpha(alpha);
 };
 const blendedLayers = (prefix, x, y) => {
-    const { anchors } = layout;
-    const high = anchors.findIndex(value => value > frame);
-    const lower = high < 0 ? anchors.length - 1 : Math.max(0, high - 1);
-    const upper = high < 0 ? lower : high;
-    const opacity = lower === upper ? 0 : (frame - anchors[lower]) / (anchors[upper] - anchors[lower]);
-    const name = slot => `${prefix}-${String(slot).padStart(2, '0')}.png`;
-    layer(name(lower), 1, x, y);
+    const { lower, upper, opacity } = terrainBlend(layout.anchors, frame);
+    layer(layerName(prefix, lower), 1, x, y);
     if (opacity > 0)
-        layer(name(upper), Math.round(255 * opacity) / 255, x, y);
+        layer(layerName(prefix, upper), opacity / 255, x, y);
 };
 
 if (desert)
