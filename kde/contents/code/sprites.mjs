@@ -183,7 +183,10 @@ export class SpritePainter {
     toUrl() { return pngUrl(this.rgba, this.width, this.height); }
 }
 
-// The sun's glow: a Gaussian that fades to ~1.5% at the edge of the square (see sunInfo().sigma).
+// A soft round falloff that is exactly 0 at the edge of its square, so the image never shows a box.
+const edgeFade = d => { const t = Math.min(1, Math.max(0, (1 - d) / 0.25)); return t * t * (3 - 2 * t); };
+
+// The sun's glow: a Gaussian (see sunInfo().sigma) that fades to nothing before the edge of the square.
 export function glowSpriteUrl(color, size = 96) {
     const rgba = new Uint8ClampedArray(size * size * 4);
     const half = size / 2;
@@ -192,20 +195,20 @@ export function glowSpriteUrl(color, size = 96) {
             const d2 = ((x + 0.5 - half) ** 2 + (y + 0.5 - half) ** 2) / (half * half);
             const o = (y * size + x) * 4;
             rgba[o] = color[0]; rgba[o + 1] = color[1]; rgba[o + 2] = color[2];
-            rgba[o + 3] = 255 * Math.exp(-4.205 * d2);
+            rgba[o + 3] = 255 * Math.exp(-4.205 * d2) * edgeFade(Math.sqrt(d2));
         }
     return pngUrl(rgba, size, size);
 }
 
 // The crescent moon with its soft halo (same shapes as core/sky.js drawMoon). Built once.
-export function moonSpriteUrl(size = 64) {
+export function moonSpriteUrl(size = 128) {
     const rgba = new Uint8ClampedArray(size * size * 4);
     const c = size / 2;
     const clamp = v => Math.min(1, Math.max(0, v));
     for (let py = 0; py < size; py++)
         for (let px = 0; px < size; px++) {
             const dx = px - c, dy = py - c, d = Math.hypot(dx, dy), o = (py * size + px) * 4;
-            blendPixel(rgba, o, 187, 148, 250, 0.13 * Math.exp(-d * d / 650));
+            blendPixel(rgba, o, 187, 148, 250, 0.13 * Math.exp(-d * d / 650) * edgeFade(d / c));
             const disk = clamp(11.8 - d), shadow = clamp(11.0 - Math.hypot(dx + 5.5, dy + 3.7));
             if (disk > 0)
                 blendPixel(rgba, o, 255, 246, 251, disk * (1 - shadow));

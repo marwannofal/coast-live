@@ -148,7 +148,7 @@ Item {
         }
 
         // moon and stars
-        moon.x = light.moon[0] - 32; moon.y = light.moon[1] - 32;
+        moon.x = light.moon[0] - 64; moon.y = light.moon[1] - 64;
         moon.opacity = light.moon[2] / 255;
         moon.visible = light.moon[2] > 0;
         updateStars();
@@ -369,7 +369,7 @@ Item {
             }
             Image { id: sunGlow; smooth: true; visible: false }
             Rectangle { id: sunDisk; width: 30.8; height: 30.8; radius: 15.4; visible: false }
-            Image { id: moon; width: 64; height: 64; smooth: true; visible: false; source: stage.moonUrl }
+            Image { id: moon; width: 128; height: 128; smooth: true; visible: false; source: stage.moonUrl }
         }
 
         // ---------- below the sky (Sahara): the last sky colour continues down to the bottom
