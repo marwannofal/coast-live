@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Everything that can be verified on a desktop. Needs gjs, node, java, qml6, python3 (numpy, PIL).
+# Everything that can be verified on a desktop. Needs gjs, node, java, python3 (numpy, PIL).
 # GNOME Shell itself is exercised headless in an isolated session (no effect on your desktop).
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -14,7 +14,7 @@ step "Java port == JavaScript core"              bash -c '
     node tools/gen-android-layout.mjs > "$tmp/Layout.java"; mkdir "$tmp/jvm"
     javac --release 17 -d "$tmp/jvm" android/core/org/coastlive/core/*.java "$tmp/Layout.java" android/test/org/coastlive/test/*.java
     java -cp "$tmp/jvm" org.coastlive.test.GoldenTest "$tmp/golden" "$PWD"'
-step "GNOME, QML and Java renderers agree"       tests/compare-renderers.sh
+step "GNOME and Java renderers agree"            tests/compare-renderers.sh
 tools/build-gnome.sh >/dev/null
 for theme in coast dunes plateau oasis; do
     step "GNOME Shell headless: $theme"          bash -c "tests/gnome-headless.sh $theme 12 2>&1 | grep -E '^\s+State:' | sort -u | grep -q ACTIVE"

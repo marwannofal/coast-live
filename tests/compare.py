@@ -12,7 +12,7 @@ print(f"{'scene':<16}{'renderer':<9}{'mean diff':>10}{'p99':>6}  verdict")
 for ref in sorted(folder.glob('ref-*.png')):
     scene = ref.stem[4:]
     a = np.asarray(Image.open(ref).convert('RGB')).astype(int)
-    for kind in ('qml', 'java'):
+    for kind in ('java',):
         other = folder / f'{kind}-{scene}.png'
         if not other.exists():
             continue

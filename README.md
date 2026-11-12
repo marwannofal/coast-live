@@ -4,7 +4,7 @@ An animated pixel-art wallpaper whose sky follows the real sun. Four scenes (Coa
 Sandstone Plateau, Desert Oasis) with drifting clouds, waves, swaying grass and palms, a moon and stars at
 night. It works offline and finds the sun from your time zone, or from coordinates you enter.
 
-It runs on **GNOME Shell**, **KDE Plasma 6** and **Android**, from one shared core.
+It runs on **GNOME Shell** and **Android**, from one shared core. (KDE Plasma: see *KDE status*.)
 
 | Scene | Animated details |
 | --- | --- |
@@ -19,7 +19,6 @@ It runs on **GNOME Shell**, **KDE Plasma 6** and **Android**, from one shared co
 core/      Platform-independent JavaScript: solar clock, sky generator, scene painting.
            No I/O, no platform APIs. The single source of truth.
 gnome/     GNOME Shell extension  - thin shell around core/ (Cairo, GdkPixbuf, GSettings)
-kde/       Plasma 6 wallpaper     - thin shell around core/ (QML Canvas), core imported as .mjs
 android/   Android app            - Java port of core/ (android/core) + Android shell (android/app)
 assets/    Terrain art (ground/palm layers, lit stills) and time-zone data
 art-source/  Concept art the terrain layers are cut from (not shipped)
@@ -30,7 +29,7 @@ Every scene is drawn on a 960x540 pixel grid and scaled to the screen. The sky i
 `core/sky.js` blends seven colour palettes and draws the sun, moon and stars for any of 2,000 lighting
 frames. (The first version shipped these as 2,000 pre-rendered 1080p JPEGs, 123 MB.) Clouds, water, grass and
 dust are drawn through a tiny `paint` interface (`color`, `rectangle`, `fill`, `clip` ...), so the identical
-drawing code runs on Cairo, QML Canvas and Android Canvas.
+drawing code runs on Cairo and Android Canvas.
 
 Android cannot run the JavaScript, so `android/core` is a line-for-line Java port, kept honest by
 `tests/` which compares it against the JavaScript core (see *Verification*).
@@ -41,7 +40,6 @@ Android cannot run the JavaScript, so `android/core` is a line-for-line Java por
 | --- | --- | --- |
 | GNOME extension zip | 74 MB | 3.1 MB |
 | Android APK | 22 MB (80 videos) | 1.0 MB |
-| KDE Plasma package | - | 0.9 MB |
 
 ## Install
 
@@ -54,13 +52,6 @@ gnome-extensions install --force dist/coast-live.shell-extension.zip
 ```
 Log out and back in, then `gnome-extensions enable coast-live@coastlive`. Settings: `gnome-extensions prefs coast-live@coastlive`.
 
-**KDE Plasma 6**
-
-```sh
-kpackagetool6 -t Plasma/Wallpaper -i dist/kde/org.coastlive.wallpaper      # -u to upgrade
-```
-Right-click the desktop -> *Configure Desktop and Wallpaper* -> Wallpaper type **Coast Live**.
-
 **Android 7.0+**: copy `dist/coast-live.apk` to the phone and open it (allow installs from this source), open
 **Coast Live**, pick a scene, tap **Set wallpaper**. Swiping between home screens pans the scene.
 
@@ -68,7 +59,7 @@ Right-click the desktop -> *Configure Desktop and Wallpaper* -> Wallpaper type *
 
 By default the sun follows your **system time zone**, using the zone's representative city from the IANA
 database (`Asia/Shanghai` uses Shanghai). For a more exact sunrise/sunset in another city of the same zone,
-enter **custom coordinates** in the GNOME or KDE settings. Unknown zones fall back to an estimate from the clock
+enter **custom coordinates** in the GNOME settings. Unknown zones fall back to an estimate from the clock
 offset. Polar day and night have special lighting sequences. Sun and moon paths are artistic, not astronomical.
 
 ## Build
@@ -76,7 +67,6 @@ offset. Polar day and night have special lighting sequences. Sun and moon paths 
 | Target | Command | Needs |
 | --- | --- | --- |
 | GNOME | `tools/build-gnome.sh` -> `dist/coast-live.shell-extension.zip` | `glib-compile-schemas`, `zip` |
-| KDE | `tools/build-kde.sh` -> `dist/kde/org.coastlive.wallpaper` | `node`, `zip` |
 | Android | `tools/build-android.sh` -> `dist/coast-live.apk` | JDK 17+, `node`, Android `android.jar` + build-tools (see script header) |
 
 The Android build is Gradle-free (`aapt2` -> `javac` -> `d8` -> `zipalign` -> `apksigner`) and signs with a
@@ -93,18 +83,25 @@ renders a complete scene with the GNOME code path.
 
 * The Java port against the JavaScript core: lighting for all 2,000 frames, coastline, cloud masks, solar frames
   at 400 instants/places, time-zone lookup, and 23 million sky pixel values (identical).
-* The **GNOME (Cairo), QML and Java renderers** agree on six scenes at several times of day (mean difference
-  0.04-0.22 of 255).
+* The **GNOME (Cairo) and Java renderers** agree on six scenes at several times of day (mean difference
+  0.04-0.16 of 255).
 * The GNOME extension loads and runs in an isolated, **headless GNOME Shell** for all four scenes.
 * The sky agrees with the original pre-rendered frames to 0.7/255 mean (JPEG noise):
   `tests/sky-vs-legacy.mjs` (needs the old `scene-data.json` from the v4 zip on `main`).
+
+### KDE status
+
+A Plasma 6 plugin was built and then **removed** (see git history, commit "Add Plasma 6 wallpaper plugin"). It rendered
+correctly offscreen but **froze plasmashell** on a real desktop: QML's JavaScript `Canvas` is far too slow for this scene
+(measured: about 12 microseconds per pixel handed over as `ImageData`, about 2 ms per `fillRect`, so one repaint of a
+960x540 layer took 6-8 s). Faster routes (images through data URLs need a hand-written base64 at ~30 ms per band; a
+WorkerScript is untested) or a native design (QML gradients/Shapes, or a small C++ plugin) are a separate piece of work.
+Until then, use the GNOME extension or the Android app.
 
 ### What is not verified
 
 * **Android on a device or emulator.** The APK builds, is signed and its manifest is valid, and all its logic is
   tested through the Java core; but the Android `Canvas`/`WallpaperService` glue has not been run.
-* **KDE inside a live plasmashell.** The scene is tested offscreen in Qt; `main.qml`/`config.qml` pass `qmllint`
-  and use the Plasma modules present on Plasma 6, but were not loaded into a running desktop.
 * **GNOME 45-50.** Tested headless on GNOME 51 only; the extension uses the same APIs as v4.
 
 ## Licensing and credits
