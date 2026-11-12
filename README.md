@@ -8,10 +8,10 @@ Coast Live 4.0 targets GNOME Shell 45–50. Download `coast-live.shell-extension
 
 ```sh
 gnome-shell --version
-gnome-extensions install ~/Downloads/coast-live.shell-extension.zip
+gnome-extensions install coast-live.shell-extension.zip
 ```
 
-Log out of GNOME and sign back in, then enable the extension. If the `coast-live@coastlive` extension is already installed, use `gnome-extensions install --force ~/Downloads/coast-live.shell-extension.zip` to upgrade it before signing out.
+Log out of GNOME and sign back in, then enable the extension. If the `coast-live@coastlive` extension is already installed, use `gnome-extensions install --force coast-live.shell-extension.zip` to upgrade it before signing out.
 
 ```sh
 gnome-extensions enable coast-live@coastlive
