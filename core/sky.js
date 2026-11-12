@@ -197,6 +197,43 @@ export function lighting(index) {
     };
 }
 
+// Smooth palette colours for a frame (no noise): the vertical gradients of the sky, the sea and the
+// meadow, for renderers that draw with gradients instead of per-pixel images.
+export function skyColors(index) {
+    const key = index / SKY_KEY_SCALE;
+    const [before, after, weight] = keyInterval(SKY_KEYS, key);
+    const blendPart = part => PALETTES[before][part].map((color, i) =>
+        color.map((value, channel) => mix(value, PALETTES[after][part][i][channel], weight)));
+    return { sky: blendPart('sky'), sea: blendPart('sea'), meadow: blendPart('meadow') };
+}
+
+// The sun's position, size and colours. `strength` already includes its fade-in/out at the horizon.
+export function sunInfo(index) {
+    const key = index / SKY_KEY_SCALE;
+    const { arc, x, y } = sunPosition(key);
+    const visibility = smooth(clamp(Math.min(key - 99, 401 - key) / 11));
+    const [firstSun, secondSun, sunWeight] = keyInterval(SUN_COLORS, key);
+    return {
+        x, y, arc, visibility,
+        sigma: mix(64, 98, Math.max(0, arc)),
+        strength: visibility * mix(0.84, 0.70, Math.max(0, arc)),
+        glow: firstSun.map((value, i) => mix(value, secondSun[i], sunWeight)),
+        disk: [255, 255, Math.round(mix(236, 255, Math.max(0, arc)))],
+    };
+}
+
+// The visible stars: [x, y, size 0..1, brightness 0..1]. Empty by day.
+export function starField(index) {
+    const key = index / SKY_KEY_SCALE;
+    const nightTime = key >= 410 ? key - 410 : key + 90;
+    const visibility = smooth(clamp(Math.min(nightTime, 180 - nightTime) / 31));
+    if (nightTime / 180 < 0 || nightTime / 180 > 1 || !visibility)
+        return [];
+    return STARS.map(([x, y, size, phase]) => [
+        x, y, size, (0.19 + 0.62 * size) * (0.83 + 0.17 * Math.sin(TAU * key / 50 + phase)) * visibility,
+    ]);
+}
+
 // `rows` limits the image to the top rows of the 960x540 scene. The desert
 // scenes only need the sky (rows = HORIZON); Coast needs the whole picture.
 export function createSky({ rows = HEIGHT } = {}) {

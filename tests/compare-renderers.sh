@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render the same scenes with the GNOME reference (GJS + Cairo) and the Java core,
+# Render the same scenes with the GNOME reference (GJS + Cairo), the QML scene and the Java core,
 # then check that they agree. Skips an implementation whose tools are missing.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -10,6 +10,13 @@ scenes=("coast 1000 12" "coast 1560 30" "coast 150 5" "dunes 1000 8" "plateau 15
 for s in "${scenes[@]}"; do read -r theme frame elapsed <<<"$s"
     gjs -m tools/render-scene.js "$theme" "$frame" "$elapsed" "$tmp/ref-$theme-$frame.png" >/dev/null
 done
+
+if command -v qml6 >/dev/null; then
+    tools/build-kde.sh >/dev/null
+    for s in "${scenes[@]}"; do read -r theme frame elapsed <<<"$s"
+        tests/kde-render.sh "$theme" "$frame" "$elapsed" "$tmp/qml-$theme-$frame.png" >/dev/null
+    done
+fi
 
 if command -v javac >/dev/null; then
     mkdir -p "$tmp/jvm"

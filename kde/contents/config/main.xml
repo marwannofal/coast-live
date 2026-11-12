@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="Theme" type="String">
+      <label>Scene</label>
+      <default>coast</default>
+    </entry>
+    <entry name="FrameRate" type="Int">
+      <label>Animation frame rate</label>
+      <default>10</default>
+    </entry>
+    <entry name="ManualLocation" type="Bool">
+      <label>Use custom coordinates</label>
+      <default>false</default>
+    </entry>
+    <entry name="Latitude" type="Double">
+      <label>Custom latitude (north is positive)</label>
+      <default>0</default>
+      <min>-90</min>
+      <max>90</max>
+    </entry>
+    <entry name="Longitude" type="Double">
+      <label>Custom longitude (east is positive)</label>
+      <default>0</default>
+      <min>-180</min>
+      <max>180</max>
+    </entry>
+  </group>
+</kcfg>
