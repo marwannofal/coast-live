@@ -1,130 +1,119 @@
-# Coast Live 4.0
+# Coast Live
 
-Coast Live is an animated pixel-art wallpaper for GNOME Shell and Android with four selectable scenes. On GNOME, the sun, moon and sky lighting use a library of 2,000 Full HD images. Clouds, waves and grass animate independently and take their colors from the current sky.
+An animated pixel-art wallpaper whose sky follows the real sun. Four scenes (Coast, Golden Dunes,
+Sandstone Plateau, Desert Oasis) with drifting clouds, waves, swaying grass and palms, a moon and stars at
+night. It works offline and finds the sun from your time zone, or from coordinates you enter.
 
-## Install on GNOME
-
-Coast Live 4.0 targets GNOME Shell 45–50. Download `coast-live.shell-extension.zip` from the release and save it in Downloads. Run the following as your desktop user.
-
-```sh
-gnome-shell --version
-gnome-extensions install coast-live.shell-extension.zip
-```
-
-Log out of GNOME and sign back in, then enable the extension. If the `coast-live@coastlive` extension is already installed, use `gnome-extensions install --force coast-live.shell-extension.zip` to upgrade it before signing out.
-
-```sh
-gnome-extensions enable coast-live@coastlive
-gnome-extensions info coast-live@coastlive
-```
-
-The extension is running when its state is `ACTIVE`. It starts at subsequent sign-ins. Open a clear view of the desktop to see the motion.
-
-## Install on Android
-
-The Coast Live 2.0 APK targets Android 7.0 and newer on phones and tablets that support live wallpapers. It runs offline, uses the device’s time zone to select a solar scene, and plays 30 FPS animation in portrait or landscape.
-
-1. Download `coast-live.apk` from the release to your phone or tablet.
-2. Open the APK from Downloads and tap **Install**.
-3. Open **Coast Live**, select a scene, then tap **Set wallpaper** in Android’s wallpaper preview.
-4. Choose from the screens offered by your device.
-
-## Scenes
+It runs on **GNOME Shell**, **KDE Plasma 6** and **Android**, from one shared core.
 
 | Scene | Animated details |
 | --- | --- |
-| Coast | Cloud drift, waves, and swaying grass |
-| Golden Dunes | Cloud drift and windblown sand |
-| Sandstone Plateau | Cloud drift, dust, and swaying dry grass |
-| Desert Oasis | Cloud drift, swaying palms and reeds, and water reflections |
+| Coast | Cloud drift, waves, swaying grass |
+| Golden Dunes | Cloud drift, windblown sand |
+| Sandstone Plateau | Cloud drift, dust, swaying dry grass |
+| Desert Oasis | Cloud drift, swaying palms and reeds, water reflections |
 
-The GNOME extension uses the local solar clock and 2,000 sky frames for every scene. Open its preferences and select **Scene → Wallpaper**. Each scene has a matching still for GNOME Appearance. Android uses ten local-time stages per scene in both orientations.
+## How it is built
 
-## GNOME location and animation
-
-The extension reads the system time zone and uses the representative location from the IANA time-zone database. For example, `Asia/Shanghai` uses Shanghai, even if you are elsewhere in China. For accurate timing in another city within the zone, enter its latitude and longitude. Change the computer’s time zone in GNOME **Settings → Date & Time** when you travel.
-
-```sh
-gnome-extensions prefs coast-live@coastlive
+```
+core/      Platform-independent JavaScript: solar clock, sky generator, scene painting.
+           No I/O, no platform APIs. The single source of truth.
+gnome/     GNOME Shell extension  - thin shell around core/ (Cairo, GdkPixbuf, GSettings)
+kde/       Plasma 6 wallpaper     - thin shell around core/ (QML Canvas), core imported as .mjs
+android/   Android app            - Java port of core/ (android/core) + Android shell (android/app)
+assets/    Terrain art (ground/palm layers, lit stills) and time-zone data
+art-source/  Concept art the terrain layers are cut from (not shipped)
+tools/     Build scripts and art generation        tests/   Verification (see below)
 ```
 
-Under **Solar location**, switch on **Use custom coordinates**. Beijing, for example, is approximately `39.90` latitude and `116.41` longitude. Use negative numbers for south or west. The settings show which location is currently in use. When a zone has no representative city, the extension estimates longitude from the clock offset. The animation and solar calculations run offline.
+Every scene is drawn on a 960x540 pixel grid and scaled to the screen. The sky is **computed**, not stored:
+`core/sky.js` blends seven colour palettes and draws the sun, moon and stars for any of 2,000 lighting
+frames. (The first version shipped these as 2,000 pre-rendered 1080p JPEGs, 123 MB.) Clouds, water, grass and
+dust are drawn through a tiny `paint` interface (`color`, `rectangle`, `fill`, `clip` ...), so the identical
+drawing code runs on Cairo, QML Canvas and Android Canvas.
 
-Under **Appearance**, **Match GNOME background** uses a Coast Live still for the GNOME Appearance preview and Activities overview. The still refreshes at most once per minute. Coast Live restores the previous wallpaper on disable when its own image is still selected. A wallpaper selected manually takes priority.
+Android cannot run the JavaScript, so `android/core` is a line-for-line Java port, kept honest by
+`tests/` which compares it against the JavaScript core (see *Verification*).
 
-Under **Animation**, choose Economy (8 FPS), Balanced (15 FPS), Smooth (25 FPS), or Ultra (50 FPS). Balanced is the default. The frame rate changes how often the moving layers are redrawn. The sky still follows local sunlight. The sun and moon paths are artistic, and polar day and night use special lighting sequences.
+### Size
 
-## Disable, uninstall, or troubleshoot on GNOME
+| | Before (v4) | Now |
+| --- | --- | --- |
+| GNOME extension zip | 74 MB | 3.1 MB |
+| Android APK | 22 MB (80 videos) | 1.0 MB |
+| KDE Plasma package | - | 0.9 MB |
 
-```sh
-gnome-extensions disable coast-live@coastlive
-gnome-extensions uninstall coast-live@coastlive
-```
+## Install
 
-If the install command succeeds but the extension is missing from the list, sign out of GNOME and sign back in. If GNOME reports an error loading the extension, get its state and look for the error in the current boot’s journal.
+Build first (see below), then:
 
-```sh
-gnome-extensions info coast-live@coastlive
-journalctl --user -b _COMM=gnome-shell -g 'Coast Live|amman-coast-live' --no-pager
-```
-
-## Maintain and build the GNOME extension
-
-The install ZIP contains the readable source, preferences, schema, time-zone data, and wallpaper assets. Extract it into a project directory to work on the source.
-
-| File | Purpose |
-| --- | --- |
-| `extension.js` | Mounts the desktop actors and controls the animation and lighting clocks |
-| `background-sync.js` | Updates and restores the native GNOME background |
-| `scene.js` | Draws and colors the coastal layers |
-| `desert.js`, `themes/` | Sahara scene artwork, lighting and motion |
-| `solar-clock.js` | Estimates solar altitude, sunrise, sunset, and twilight |
-| `location.js`, `zone-data.js` | Selects the representative location or custom coordinates |
-| `prefs.js`, `schemas/` | GNOME preferences and persistent settings |
-| `solar/`, `scene-data.json` | Full HD sky images and synchronized lighting data |
-
-From the project directory, compile the schema and package the extension. This requires `glib-compile-schemas` and `zip`.
+**GNOME Shell 45-51**
 
 ```sh
-glib-compile-schemas --strict schemas
-zip -r ../coast-live.shell-extension.zip \
-    metadata.json extension.js prefs.js scene.js solar-clock.js location.js zone-data.js background-sync.js desert.js \
-    schemas data solar themes scene-data.json tools README.md COPYING preview.jpg
+gnome-extensions install --force dist/coast-live.shell-extension.zip
 ```
+Log out and back in, then `gnome-extensions enable coast-live@coastlive`. Settings: `gnome-extensions prefs coast-live@coastlive`.
 
-Use the packaged ZIP for local installation tests. Check that automatic location, custom coordinates, all frame rates, Appearance and Activities, monitor changes, disable and re-enable, and desktop sign-in work on the GNOME releases you list as supported.
-
-### Regenerate the artwork
-
-The release includes the rendered artwork. To regenerate it from source, install Node.js and FFmpeg, then run these commands from the project directory.
+**KDE Plasma 6**
 
 ```sh
-mkdir -p solar
-node tools/render-art.cjs scene-data.json | ffmpeg -y -f rawvideo \
-    -pix_fmt rgb24 -video_size 960x540 -framerate 30 -i pipe:0 \
-    -vf scale=1920:1080:flags=neighbor -c:v mjpeg -pix_fmt yuvj444p \
-    -q:v 5 -start_number 0 solar/frame_%04d.jpg
+kpackagetool6 -t Plasma/Wallpaper -i dist/kde/org.coastlive.wallpaper      # -u to upgrade
 ```
+Right-click the desktop -> *Configure Desktop and Wallpaper* -> Wallpaper type **Coast Live**.
 
-### Publish a release
+**Android 7.0+**: copy `dist/coast-live.apk` to the phone and open it (allow installs from this source), open
+**Coast Live**, pick a scene, tap **Set wallpaper**. Swiping between home screens pans the scene.
 
-For a GitHub release, put the project files and this README in a repository, create a release tagged `v4.0.0`, and attach `coast-live.shell-extension.zip` for GNOME and `coast-live.apk` for Android. Point users to the installation steps above. Check Android installation and wallpaper playback on a device before publishing the APK. You can also attach `preview.jpg` as a screenshot.
+## Location and the sun
 
-Suggested release description
+By default the sun follows your **system time zone**, using the zone's representative city from the IANA
+database (`Asia/Shanghai` uses Shanghai). For a more exact sunrise/sunset in another city of the same zone,
+enter **custom coordinates** in the GNOME or KDE settings. Unknown zones fall back to an estimate from the clock
+offset. Polar day and night have special lighting sequences. Sun and moon paths are artistic, not astronomical.
 
-> Coast Live brings a pixel-art coast and three Sahara scenes to GNOME and Android. The sky follows local daylight. GNOME offers custom coordinates and four frame rates. Android includes 30 FPS portrait and landscape animation.
+## Build
 
-For the official GNOME Extensions directory, review and test the extension against its submission guidelines. Add your public source or support URL to `metadata.json` and list the GNOME versions you have tested. The directory expects maintainers to understand and maintain the code and applies its own review policy to AI-generated code. For that submission, package the runtime files, schema XML, artwork and license. Keep the Node.js artwork generator in the public source repository.
+| Target | Command | Needs |
+| --- | --- | --- |
+| GNOME | `tools/build-gnome.sh` -> `dist/coast-live.shell-extension.zip` | `glib-compile-schemas`, `zip` |
+| KDE | `tools/build-kde.sh` -> `dist/kde/org.coastlive.wallpaper` | `node`, `zip` |
+| Android | `tools/build-android.sh` -> `dist/coast-live.apk` | JDK 17+, `node`, Android `android.jar` + build-tools (see script header) |
 
-- GitHub release instructions — https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository
-- GNOME Shell Extensions review guidelines — https://gjs.guide/extensions/review-guidelines/review-guidelines.html
-- GNOME Shell Extensions submission — https://extensions.gnome.org/upload/
+The Android build is Gradle-free (`aapt2` -> `javac` -> `d8` -> `zipalign` -> `apksigner`) and signs with a
+local, git-ignored `android/debug.keystore` created on first use.
+
+**Regenerating art.** `tools/build-sahara.py art-source/dunes.png art-source/plateau.png art-source/oasis.png`
+rebuilds the terrain layers and lit stills (needs Python with numpy, scipy, Pillow, and Node for the sky).
+`tools/render-frame.mjs FRAME` dumps one raw sky frame; `gjs -m tools/render-scene.js THEME FRAME ELAPSED out.png`
+renders a complete scene with the GNOME code path.
+
+## Verification
+
+`tests/run-all.sh` runs everything that can be checked on a desktop (about 95 s):
+
+* The Java port against the JavaScript core: lighting for all 2,000 frames, coastline, cloud masks, solar frames
+  at 400 instants/places, time-zone lookup, and 23 million sky pixel values (identical).
+* The **GNOME (Cairo), QML and Java renderers** agree on six scenes at several times of day (mean difference
+  0.04-0.22 of 255).
+* The GNOME extension loads and runs in an isolated, **headless GNOME Shell** for all four scenes.
+* The sky agrees with the original pre-rendered frames to 0.7/255 mean (JPEG noise):
+  `tests/sky-vs-legacy.mjs` (needs the old `scene-data.json` from the v4 zip on `main`).
+
+### What is not verified
+
+* **Android on a device or emulator.** The APK builds, is signed and its manifest is valid, and all its logic is
+  tested through the Java core; but the Android `Canvas`/`WallpaperService` glue has not been run.
+* **KDE inside a live plasmashell.** The scene is tested offscreen in Qt; `main.qml`/`config.qml` pass `qmllint`
+  and use the Plasma modules present on Plasma 6, but were not loaded into a running desktop.
+* **GNOME 45-50.** Tested headless on GNOME 51 only; the extension uses the same APIs as v4.
 
 ## Licensing and credits
 
-The extension JavaScript is provided under GPL-2.0-or-later. See `COPYING`. The bundled time-zone locations and aliases come from the public-domain IANA time-zone database. The solar approximation uses NOAA’s published solar equations.
+GPL-2.0-or-later, see `COPYING`. Time-zone locations and aliases come from the public-domain
+[IANA time-zone database](https://www.iana.org/time-zones); the solar approximation uses
+[NOAA's solar equations](https://gml.noaa.gov/grad/solcalc/solareqns.PDF). The Sahara scenery is cut from the
+original concept art in `art-source/`; the coastal sky and clouds are procedural.
 
-The coastal wallpaper frames and cloud masks are generated from the procedural artwork in `tools/render-art.cjs`. The Sahara scenery uses the original concept artwork in `themes/source/`, with layers prepared by `tools/build-sahara.py`. The bundled artwork is distributed under GPL-2.0-or-later with the extension.
-
-- Time-zone data — https://www.iana.org/time-zones
-- Solar equations — https://gml.noaa.gov/grad/solcalc/solareqns.PDF
+For the GNOME Extensions directory, see its
+[review guidelines](https://gjs.guide/extensions/review-guidelines/review-guidelines.html) (the directory applies
+its own policy to AI-generated code) and the submission page at <https://extensions.gnome.org/upload/>.
