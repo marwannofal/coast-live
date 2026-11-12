@@ -1,0 +1,17 @@
+{
+  "uuid": "coast-live@coastlive",
+  "name": "Coast Live",
+  "description": "Animated Coast and Sahara wallpapers with local sunrise, sunset, and custom coordinates.",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51"
+  ],
+  "settings-schema": "org.gnome.shell.extensions.coast-live",
+  "version": 5,
+  "url": "https://github.com/marwannofal/coast-live"
+}

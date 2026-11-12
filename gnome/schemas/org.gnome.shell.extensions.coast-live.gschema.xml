@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.coast-live" path="/org/gnome/shell/extensions/coast-live/">
+    <key name="manual-location" type="b">
+      <default>false</default>
+      <summary>Use custom coordinates</summary>
+    </key>
+    <key name="latitude" type="d">
+      <range min="-90.0" max="90.0"/>
+      <default>0.0</default>
+      <summary>Custom latitude</summary>
+    </key>
+    <key name="longitude" type="d">
+      <range min="-180.0" max="180.0"/>
+      <default>0.0</default>
+      <summary>Custom longitude</summary>
+    </key>
+    <key name="match-gnome-background" type="b">
+      <default>true</default>
+      <summary>Show a Coast Live still in GNOME Appearance and Activities</summary>
+    </key>
+    <key name="theme" type="s">
+      <choices>
+        <choice value="coast"/>
+        <choice value="dunes"/>
+        <choice value="plateau"/>
+        <choice value="oasis"/>
+      </choices>
+      <default>'coast'</default>
+      <summary>Live wallpaper scene</summary>
+    </key>
+    <key name="animation-speed" type="s">
+      <choices>
+        <choice value="economy"/>
+        <choice value="balanced"/>
+        <choice value="smooth"/>
+        <choice value="ultra"/>
+      </choices>
+      <default>'balanced'</default>
+      <summary>Animation frame rate</summary>
+    </key>
+  </schema>
+</schemalist>
