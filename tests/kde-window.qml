@@ -1,6 +1,6 @@
 // Try the KDE scene live in an ordinary window, WITHOUT installing anything into Plasma.
 // If it ever feels heavy, just close the window (or Ctrl+C in the terminal).
-//   tools/build-kde.sh && qml6 tests/kde-window.qml -- coast        (coast | dunes | plateau | oasis)
+//   tools/build-kde.sh && qml6 tests/kde-window.qml -- coast        (coast | dunes | plateau | oasis | amman)
 import QtQuick
 import QtQuick.Window
 import "../dist/kde/org.coastlive.wallpaper/contents/ui"

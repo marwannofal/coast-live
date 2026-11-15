@@ -5,8 +5,8 @@ package org.coastlive.core;
 public final class Themes {
     private Themes() {}
 
-    public static final String[] THEMES = {"coast", "dunes", "plateau", "oasis"};
-    public static final String[] THEME_NAMES = {"Coast", "Golden Dunes", "Sandstone Plateau", "Desert Oasis"};
+    public static final String[] THEMES = {"coast", "dunes", "plateau", "oasis", "amman"};
+    public static final String[] THEME_NAMES = {"Coast", "Golden Dunes", "Sandstone Plateau", "Desert Oasis", "Amman"};
 
     /** Draw layer `lower` fully and layer `upper` on top at `opacity` (0..255). */
     public static final class Blend {

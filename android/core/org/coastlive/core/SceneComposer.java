@@ -20,7 +20,7 @@ public final class SceneComposer {
         this.skyScale = desert ? Layout.skyScale(theme) : 1;
         this.skyRows = desert ? Config.HORIZON : Config.HEIGHT;
         this.skyHeight = desert ? (int) Math.round(Config.HORIZON * skyScale) : Config.HEIGHT;
-        this.fxTop = desert ? Desert.FX_TOP : Config.HORIZON;
+        this.fxTop = desert ? Desert.fxTop(theme) : Config.HORIZON;
     }
 
     private void terrain(Surface s, String prefix, int frame) {

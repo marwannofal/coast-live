@@ -4,7 +4,7 @@
 //
 //   gjs -m tools/render-scene.js THEME FRAME ELAPSED OUT.png [ZOOM]
 //
-//   THEME    coast | dunes | plateau | oasis
+//   THEME    coast | dunes | plateau | oasis | amman
 //   FRAME    lighting frame 0..1999 (e.g. 1000 = solar noon)
 //   ELAPSED  animation clock in seconds (clouds, waves, grass)
 import Cairo from 'cairo';
@@ -13,7 +13,7 @@ import GLib from 'gi://GLib';
 import Gdk from 'gi://Gdk?version=4.0';
 
 import { HEIGHT, HORIZON, WIDTH } from '../core/config.js';
-import { DESERT_FX_TOP, paintDesert, palmAngle } from '../core/desert.js';
+import { fxTop, paintDesert, palmAngle } from '../core/desert.js';
 import { CLOUDS, cloudPosition, paintCloud, paintGrass, paintWater } from '../core/scene.js';
 import { COAST_HALF, makeCloudMasks } from '../core/shapes.js';
 import { createSky, lighting } from '../core/sky.js';
@@ -100,7 +100,7 @@ const blendedLayers = (prefix, x, y) => {
 if (desert)
     blendedLayers('ground', 0, 0);
 
-const top = desert ? DESERT_FX_TOP : HORIZON;
+const top = desert ? fxTop(theme) : HORIZON;
 cr.save();
 cr.translate(0, top);
 cr.rectangle(0, 0, WIDTH, HEIGHT - top);

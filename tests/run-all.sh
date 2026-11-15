@@ -17,8 +17,9 @@ step "Java port == JavaScript core"              bash -c '
 step "GNOME, QML and Java renderers agree"       tests/compare-renderers.sh
 step "KDE scene stays light (coast)"              tests/kde-perf.sh coast
 step "KDE scene stays light (oasis)"              tests/kde-perf.sh oasis
+step "KDE scene stays light (amman)"              tests/kde-perf.sh amman
 tools/build-gnome.sh >/dev/null
-for theme in coast dunes plateau oasis; do
+for theme in coast dunes plateau oasis amman; do
     step "GNOME Shell headless: $theme"          bash -c "tests/gnome-headless.sh $theme 12 2>&1 | grep -E '^\s+State:' | sort -u | grep -q ACTIVE"
 done
 echo; [ $status = 0 ] && echo "ALL CHECKS PASSED" || echo "SOME CHECKS FAILED"

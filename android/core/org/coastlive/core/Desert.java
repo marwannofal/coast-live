@@ -11,6 +11,9 @@ public final class Desert {
     /** Top row of the effects layer. */
     public static final int FX_TOP = 325;
 
+    /** The Amman scene only animates its flag, high above the city. */
+    public static int fxTop(String theme) { return theme.equals("amman") ? 190 : FX_TOP; }
+
     private static final double[][] GRAINS = new double[108][5];
     static {
         Mathx.Random next = new Mathx.Random(1933);
@@ -98,7 +101,9 @@ public final class Desert {
     }
 
     public static void paintDesert(Painter paint, double elapsed, Sky.Light light, String theme) {
-        if (theme.equals("oasis")) {
+        if (theme.equals("amman")) {
+            Flag.paint(paint, elapsed, light);
+        } else if (theme.equals("oasis")) {
             paintOasisWater(paint, elapsed, light);
             paintTufts(paint, elapsed, light, REEDS, true);
         } else {

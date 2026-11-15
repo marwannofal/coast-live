@@ -2,9 +2,12 @@
 // Animated Sahara layers: dust, tufts and oasis water, drawn through the same
 // `paint` interface as scene.js.
 import { TAU, seededRandom, wrap } from './math.js';
+import { paintFlag } from './flag.js';
 
 // Top row of the effects layer (everything above it is sky or distant terrain).
 export const DESERT_FX_TOP = 325;
+// The Amman scene only animates its flag, which hangs high above the city.
+export const fxTop = theme => theme === 'amman' ? 190 : DESERT_FX_TOP;
 
 const mix = (a, b, amount) => a.map((value, i) => value + (b[i] - value) * amount);
 
@@ -126,7 +129,9 @@ function paintOasisWater(paint, elapsed, light) {
 }
 
 export function paintDesert(paint, elapsed, light, theme) {
-    if (theme==='oasis') {
+    if (theme==='amman') {
+        paintFlag(paint,elapsed,light);
+    } else if (theme==='oasis') {
         paintOasisWater(paint,elapsed,light);
         paintTufts(paint,elapsed,light,reeds,true);
     } else {

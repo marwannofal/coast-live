@@ -3,8 +3,8 @@
 // background are indexed.
 import { SKY_FRAMES } from './config.js';
 
-export const THEMES = ['coast', 'dunes', 'plateau', 'oasis'];
-export const THEME_NAMES = ['Coast', 'Golden Dunes', 'Sandstone Plateau', 'Desert Oasis'];
+export const THEMES = ['coast', 'dunes', 'plateau', 'oasis', 'amman'];
+export const THEME_NAMES = ['Coast', 'Golden Dunes', 'Sandstone Plateau', 'Desert Oasis', 'Amman'];
 
 // Each Sahara scene ships STILL_SLOTS lit stills (still-00 ... still-32, every
 // second one), evenly spaced across the lighting frames.

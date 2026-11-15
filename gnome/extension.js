@@ -13,7 +13,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { BackgroundSync } from './background-sync.js';
 import { LocalLocation } from './location.js';
 import { HEIGHT, HORIZON, WIDTH } from './core/config.js';
-import { DESERT_FX_TOP, paintDesert, palmAngle } from './core/desert.js';
+import { fxTop, paintDesert, palmAngle } from './core/desert.js';
 import { CLOUDS, cloudPosition, paintCloud, paintGrass, paintWater } from './core/scene.js';
 import { COAST_HALF, makeCloudMasks } from './core/shapes.js';
 import { createSky, lighting } from './core/sky.js';
@@ -296,7 +296,7 @@ export default class CoastLive extends Extension {
                 return actor;
             });
             const terrain = desert ? newLayers(scene, WIDTH, HEIGHT) : [];
-            const top = desert ? DESERT_FX_TOP : HORIZON;
+            const top = desert ? fxTop(this._theme) : HORIZON;
             const shore = drawingArea(WIDTH, HEIGHT - top, (paint, cr) => {
                 cr.translate(0, -top);
                 if (desert)

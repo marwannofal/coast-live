@@ -14,6 +14,7 @@
 import QtQuick
 import "../code/config.mjs" as Config
 import "../code/desert.mjs" as Desert
+import "../code/flag.mjs" as Flag
 import "../code/layout.mjs" as Layout
 import "../code/math.mjs" as MathX
 import "../code/scene.mjs" as SceneCore
@@ -73,6 +74,8 @@ Item {
     property var crestItems: []
     property var tuftItems: []
     property var dustItems: []
+    property var flagItems: []
+    property var flagColors: ({ black: "black", white: "white", green: "green", red: "red" })
     property var glintItems: []
     property var staticTuftItems: []
 
@@ -227,6 +230,11 @@ Item {
     function updateDesertColors() {
         if (!desert || !light)
             return;
+        if (activeTheme === "amman") {
+            const c = Flag.flagColors(light);
+            flagColors = { black: rgba(c.black), white: rgba(c.white), green: rgba(c.green), red: rgba(c.red) };
+            return;
+        }
         const dust = Desert.dustStyle(light);
         for (let i = 0; i < dustItems.length; i++)
             dustItems[i].color = rgba(dust.color, dust.illumination * (0.10 + (i % 3) * 0.046));
@@ -279,6 +287,9 @@ Item {
             }
             for (let i = 0; i < tuftItems.length; i++)
                 tuftItems[i].rotation = (SceneCore.tuftWind(SceneCore.GRASS_TUFTS[i], elapsed) - 0.29) * 24;
+        } else if (activeTheme === "amman") {
+            for (let i = 0; i < flagItems.length; i++)
+                flagItems[i].y = Flag.FLAG.y + Flag.flagWave(i, elapsed);
         } else {
             for (let i = 0; i < dustItems.length; i++) {
                 const grain = Desert.dustAt(i, elapsed, activeTheme);
@@ -473,8 +484,40 @@ Item {
                 visible: opacity > 0
             }
         }
+        // The waving flag of the Amman scene: one thin item per pixel column, moved up and down by the wave.
         Repeater {
-            model: root.desert ? Desert.DUST_GRAINS : 0
+            model: root.activeTheme === "amman" ? Flag.FLAG.width : 0
+            delegate: Item {
+                id: flagColumn
+                required property int index
+                readonly property var shape: Flag.FLAG_COLUMNS[index]
+                readonly property real stripe: Flag.FLAG.height / 3
+                x: Flag.FLAG.x + index
+                y: Flag.FLAG.y
+                width: 1
+                height: Flag.FLAG.height
+                Rectangle { width: 1; height: flagColumn.stripe; color: root.flagColors.black }
+                Rectangle { y: flagColumn.stripe; width: 1; height: flagColumn.stripe; color: root.flagColors.white }
+                Rectangle { y: 2 * flagColumn.stripe; width: 1; height: flagColumn.stripe; color: root.flagColors.green }
+                Rectangle {
+                    visible: flagColumn.shape.red !== null
+                    y: flagColumn.shape.red ? flagColumn.shape.red[0] : 0
+                    width: 1
+                    height: flagColumn.shape.red ? flagColumn.shape.red[1] : 0
+                    color: root.flagColors.red
+                }
+                Repeater {
+                    model: flagColumn.shape.star
+                    delegate: Rectangle {
+                        required property int modelData
+                        y: modelData; width: 1; height: 1; color: root.flagColors.white
+                    }
+                }
+            }
+            onItemAdded: function (index, item) { root.flagItems[index] = item; }
+        }
+        Repeater {
+            model: root.desert && root.activeTheme !== "amman" ? Desert.DUST_GRAINS : 0
             delegate: Rectangle { height: 1; width: 1; color: "transparent" }
             onItemAdded: function (index, item) { root.dustItems[index] = item; }
         }

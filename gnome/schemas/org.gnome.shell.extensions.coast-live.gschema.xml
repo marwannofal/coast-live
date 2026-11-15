@@ -25,6 +25,7 @@
         <choice value="dunes"/>
         <choice value="plateau"/>
         <choice value="oasis"/>
+        <choice value="amman"/>
       </choices>
       <default>'coast'</default>
       <summary>Live wallpaper scene</summary>

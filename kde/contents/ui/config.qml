@@ -19,7 +19,8 @@ Kirigami.FormLayout {
         { value: "coast", text: i18n("Coast") },
         { value: "dunes", text: i18n("Golden Dunes") },
         { value: "plateau", text: i18n("Sandstone Plateau") },
-        { value: "oasis", text: i18n("Desert Oasis") }
+        { value: "oasis", text: i18n("Desert Oasis") },
+        { value: "amman", text: i18n("Amman") }
     ]
     readonly property var rates: [
         { value: 8, text: i18n("Economy · 8 FPS") },

@@ -32,7 +32,7 @@ mkdir -p "$out" "$work/gen/org/coastlive/core" "$work/assets/data" "$work/classe
 node "$root/tools/gen-android-layout.mjs" > "$work/gen/org/coastlive/core/Layout.java"
 
 # Assets: terrain layers and time-zone data (the lit stills are only for the GNOME background).
-for theme in dunes plateau oasis; do
+for theme in dunes plateau oasis amman; do
     mkdir -p "$work/assets/themes/$theme"
     cp "$root"/assets/themes/$theme/ground-*.png "$work/assets/themes/$theme/"
     cp "$root"/assets/themes/$theme/palm-*.png "$work/assets/themes/$theme/" 2>/dev/null || true

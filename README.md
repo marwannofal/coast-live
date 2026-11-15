@@ -1,7 +1,7 @@
 # Coast Live
 
-An animated pixel-art wallpaper whose sky follows the real sun. Four scenes (Coast, Golden Dunes,
-Sandstone Plateau, Desert Oasis) with drifting clouds, waves, swaying grass and palms, a moon and stars at
+An animated pixel-art wallpaper whose sky follows the real sun. Five scenes (Coast, Golden Dunes,
+Sandstone Plateau, Desert Oasis, Amman) with drifting clouds, waves, swaying grass and palms, a moon and stars at
 night. It works offline and finds the sun from your time zone, or from coordinates you enter.
 
 It runs on **GNOME Shell**, **KDE Plasma 6** and **Android**, from one shared core.
@@ -12,6 +12,7 @@ It runs on **GNOME Shell**, **KDE Plasma 6** and **Android**, from one shared co
 | Golden Dunes | Cloud drift, windblown sand |
 | Sandstone Plateau | Cloud drift, dust, swaying dry grass |
 | Desert Oasis | Cloud drift, swaying palms and reeds, water reflections |
+| Amman | Cloud drift, the Jordanian flag waving on its pole (Citadel, Roman Theater and King Abdullah Mosque in the skyline) |
 
 ## How it is built
 
@@ -83,8 +84,9 @@ offset. Polar day and night have special lighting sequences. Sun and moon paths 
 The Android build is Gradle-free (`aapt2` -> `javac` -> `d8` -> `zipalign` -> `apksigner`) and signs with a
 local, git-ignored `android/debug.keystore` created on first use.
 
-**Regenerating art.** `tools/build-sahara.py art-source/dunes.png art-source/plateau.png art-source/oasis.png`
-rebuilds the terrain layers and lit stills (needs Python with numpy, scipy, Pillow, and Node for the sky).
+**Regenerating art.** `tools/build-amman.py` rebuilds the Amman layers from `art-source/amman.png` (its sky is cut away and its flag erased; the
+flag is drawn by `core/flag.js`). `tools/build-sahara.py art-source/dunes.png art-source/plateau.png art-source/oasis.png`
+rebuilds the Sahara terrain layers and lit stills (needs Python with numpy, scipy, Pillow, and Node for the sky).
 `tools/render-frame.mjs FRAME` dumps one raw sky frame; `gjs -m tools/render-scene.js THEME FRAME ELAPSED out.png`
 renders a complete scene with the GNOME code path.
 

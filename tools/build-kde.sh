@@ -31,7 +31,7 @@ fs.writeFileSync(`${dest}/layout.mjs`, `export const layout = ${JSON.stringify(l
 JS
 
 # Terrain art (the lit stills are only used by the GNOME background and are left out).
-for theme in dunes plateau oasis; do
+for theme in dunes plateau oasis amman; do
     mkdir -p "$pkg/contents/themes/$theme"
     cp "$root"/assets/themes/$theme/{ground,palm}-*.png "$pkg/contents/themes/$theme/" 2>/dev/null || \
         cp "$root"/assets/themes/$theme/ground-*.png "$pkg/contents/themes/$theme/"

@@ -5,7 +5,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
-scenes=("coast 1000 12" "coast 1560 30" "coast 150 5" "dunes 1000 8" "plateau 1560 8" "oasis 1000 8")
+scenes=("coast 1000 12" "coast 1560 30" "coast 150 5" "dunes 1000 8" "plateau 1560 8" "oasis 1000 8" "amman 1000 8" "amman 1560 8")
 
 for s in "${scenes[@]}"; do read -r theme frame elapsed <<<"$s"
     gjs -m tools/render-scene.js "$theme" "$frame" "$elapsed" "$tmp/ref-$theme-$frame.png" >/dev/null
