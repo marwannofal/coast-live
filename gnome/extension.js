@@ -22,7 +22,6 @@ import { layerName, stillName, terrainBlend } from './core/themes.js';
 import {
     flashAlpha, isVisible, layerPeriod, paintLayer, paintOverlay, particleStyle, weatherForMode, weatherLayers,
 } from './core/weather.js';
-import { WeatherFeed } from './weather.js';
 
 const ANIMATION_INTERVAL_MS = { economy: 125, balanced: 67, smooth: 40, ultra: 20 };
 const SOLAR_INTERVAL = 3_000_000;
@@ -81,7 +80,7 @@ export default class CoastLive extends Extension {
             this._elapsed = 0;
             this._solar = new SolarTracker();
             this._weatherDirty = true;
-            this._feed = new WeatherFeed(() => this._location.resolve(this._settings).coordinates, () => { this._weatherDirty = true; });
+            this._feed = null;
             this._applyWeatherMode();
             this._frame = -1;
             this._stills = [];
@@ -128,11 +127,25 @@ export default class CoastLive extends Extension {
     }
 
     _applyWeatherMode() {
-        if (this._settings.get_string('weather-mode') === 'live')
-            this._feed.start();
-        else
-            this._feed.stop();
         this._weatherDirty = true;
+        if (this._settings.get_string('weather-mode') !== 'live') {
+            this._feed?.stop();
+            return;
+        }
+        if (this._feed) {
+            this._feed.start();
+            return;
+        }
+        // The network code is only loaded when the real weather is wanted, so a system without it still
+        // shows the wallpaper.
+        import('./weather.js').then(({ WeatherFeed }) => {
+            if (!this._settings || this._feed)
+                return;
+            this._feed = new WeatherFeed(() => this._location.resolve(this._settings).coordinates,
+                () => { this._weatherDirty = true; });
+            if (this._settings.get_string('weather-mode') === 'live')
+                this._feed.start();
+        }).catch(error => console.warn('Coast Live: live weather is unavailable: ' + error.message));
     }
 
     _startAnimation() {
