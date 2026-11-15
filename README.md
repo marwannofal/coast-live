@@ -84,7 +84,7 @@ offset. Polar day and night have special lighting sequences. Sun and moon paths 
 The Android build is Gradle-free (`aapt2` -> `javac` -> `d8` -> `zipalign` -> `apksigner`) and signs with a
 local, git-ignored `android/debug.keystore` created on first use.
 
-**Regenerating art.** `tools/build-amman.py` rebuilds the Amman layers from `art-source/amman.png` (its sky is cut away and its flag erased; the
+**Regenerating art.** `tools/build-amman.py` rebuilds the Amman layers from `art-source/amman.png` and `amman-night.png` (the sky is cut away, the flag erased and the night picture blended in at dusk so the windows light up; the
 flag is drawn by `core/flag.js`). `tools/build-sahara.py art-source/dunes.png art-source/plateau.png art-source/oasis.png`
 rebuilds the Sahara terrain layers and lit stills (needs Python with numpy, scipy, Pillow, and Node for the sky).
 `tools/render-frame.mjs FRAME` dumps one raw sky frame; `gjs -m tools/render-scene.js THEME FRAME ELAPSED out.png`

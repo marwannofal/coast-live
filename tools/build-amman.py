@@ -2,7 +2,9 @@
 
 The picture has a flat blue sky, which is cut away (every pixel of the sky colour, also enclosed gaps) so the generated sky shows through,
 and a flag on its pole, which is erased: the flag is drawn and waved by the core (core/flag.js).
-Terrain layers are tinted for the lighting anchors exactly like the Sahara scenes (tools/build-sahara.py).
+Terrain layers are tinted for the lighting anchors exactly like the Sahara scenes (tools/build-sahara.py), and
+blended with the night picture (art-source/amman-night.png, the same view with the lights on) so the windows and
+the floodlit landmarks switch on at dusk and off at sunrise.
 """
 from pathlib import Path
 import importlib.util
@@ -19,6 +21,9 @@ spec.loader.exec_module(sahara)
 
 SIZE = sahara.SIZE
 SKY_TOLERANCE = 30        # summed RGB distance from the sky colour (the sky has a faint gradient, +-5)
+# How much of the night picture each lighting anchor shows (anchors: midnight, ..., noon, ..., sunset, dusk, night).
+NIGHT_WEIGHT = [1, 1, 0.85, 0.15, 0, 0, 0, 0.05, 0.6, 1, 1]
+LIT_SPEEDUP = 1.8         # lit windows come on (and go off) faster than the rest of the picture darkens
 FLAG_BOX = (1100, 336, 1180, 425)   # x0, y0, x1, y1 in source pixels: the baked-in flag, pole excluded
 
 def sky_mask(rgb):
@@ -27,7 +32,10 @@ def sky_mask(rgb):
     # Every sky-coloured pixel counts, also the enclosed gaps (between the columns of the Temple of Hercules).
     return close
 
-def main(source):
+def load(path, size):
+    return np.asarray(Image.open(path).convert('RGB').resize(size, Image.Resampling.LANCZOS)).copy()
+
+def main(source, night_source):
     folder = ROOT / 'assets' / 'themes' / 'amman'
     folder.mkdir(parents=True, exist_ok=True)
     rgb = np.asarray(Image.open(source).convert('RGB')).copy()
@@ -39,17 +47,34 @@ def main(source):
     filled = rgb[nearest[0], nearest[1]]
     filled[~sky] = rgb[~sky]
     small = np.asarray(Image.fromarray(filled).resize(SIZE, Image.Resampling.LANCZOS)).astype(float)
+    # The night picture is the same view (within a pixel), so the day picture's sky mask is reused; the colour under
+    # the sky is filled from the nearest terrain pixel as above.
+    night = load(night_source, (rgb.shape[1], rgb.shape[0]))
+    night = night[nearest[0], nearest[1]]
+    night[~sky] = load(night_source, (rgb.shape[1], rgb.shape[0]))[~sky]
+    night_small = np.asarray(Image.fromarray(night).resize(SIZE, Image.Resampling.LANCZOS)).astype(float)
+    luma = lambda a: a @ np.array([0.299, 0.587, 0.114])
+
+    def lit_terrain(tint, weight):
+        day = small * tint
+        if weight <= 0:
+            return day
+        lit = luma(night_small) > 1.3 * luma(day) + 20
+        w = np.where(lit, min(1, weight * LIT_SPEEDUP), weight)[..., None]
+        return day * (1 - w) + night_small * w
     alpha = np.asarray(Image.fromarray(((~sky) * 255).astype(np.uint8)).resize(SIZE, Image.Resampling.BOX)) > 140
     sahara.SKY_SCALES['amman'] = SKY_SCALE
     for slot, (frame, tint) in enumerate(zip(sahara.ANCHORS, sahara.TINTS)):
-        image = sahara.rgba(small, alpha, tint)
+        image = sahara.rgba(lit_terrain(tint, NIGHT_WEIGHT[slot]), alpha, 1)
         image.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(
             folder / f'ground-{slot:02}.png', optimize=True)
     for slot in range(0, 33, 2):
         frame = round(slot * 1999 / 32)
         still = Image.new('RGB', SIZE)
         still.paste(sahara.sky(frame, 'amman'), (0, 0))
-        terrain = sahara.rgba(small, alpha, sahara.palette(frame))
+        slot_position = np.interp(frame, sahara.ANCHORS, range(len(sahara.ANCHORS)))
+        weight = float(np.interp(slot_position, range(len(NIGHT_WEIGHT)), NIGHT_WEIGHT))
+        terrain = sahara.rgba(lit_terrain(sahara.palette(frame), weight), alpha, 1)
         still.paste(terrain, mask=terrain.getchannel('A'))
         still.save(folder / f'still-{slot:02}.jpg', quality=88, optimize=True)
     layout_path = ROOT / 'assets' / 'themes' / 'layout.json'
@@ -60,4 +85,4 @@ def main(source):
 SKY_SCALE = 0.72
 
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else ROOT / 'art-source' / 'amman.png')
+    main(ROOT / 'art-source' / 'amman.png', ROOT / 'art-source' / 'amman-night.png')
