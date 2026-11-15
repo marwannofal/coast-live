@@ -9,7 +9,7 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 
 mkdir -p "$out" "$stage/core" "$stage/data" "$stage/themes" "$stage/schemas"
-cp "$root"/gnome/{metadata.json,extension.js,prefs.js,background-sync.js,location.js} "$stage/"
+cp "$root"/gnome/{metadata.json,extension.js,prefs.js,background-sync.js,location.js,weather.js} "$stage/"
 cp "$root"/core/*.js "$stage/core/"
 cp "$root"/assets/data/* "$stage/data/"
 cp -r "$root"/assets/themes/. "$stage/themes/"

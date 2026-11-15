@@ -11,6 +11,7 @@ import org.coastlive.core.Config;
 import org.coastlive.core.Shapes;
 import org.coastlive.core.Sky;
 import org.coastlive.core.SolarClock;
+import org.coastlive.core.Weather;
 import org.coastlive.core.Zones;
 
 /** Checks the Java port against reference data written by tests/android-golden.mjs. */
@@ -67,6 +68,27 @@ public final class GoldenTest {
             if (Math.abs(got - expected) > 1) { sbad++; if (sbad < 4) System.out.println("  solar " + line + " java " + got); }
         }
         check(sbad == 0, "solar frame for " + n + " instants/places within 1 frame of JS (" + sbad + " off)");
+
+        // --- weather: code mapping, layer counts and overcast/fog band alphas
+        int wbad = 0, wn = 0;
+        Sky.Light noon = Sky.lighting(1000);
+        for (String line : Files.readAllLines(golden.resolve("weather.txt"))) {
+            String[] p = line.split(" ");
+            Weather x = Weather.fromCurrent(Integer.parseInt(p[0]), Double.parseDouble(p[1]), Double.parseDouble(p[2]));
+            StringBuilder layers = new StringBuilder();
+            for (Weather.Layer l : Weather.layers(x)) layers.append(layers.length() > 0 ? "," : "").append(l.count);
+            if (layers.length() == 0) layers.append('-');
+            double[][] bands = Weather.bands(noon, x);
+            double worst = 0;
+            String[] alphas = p[8].split(",");
+            for (int i = 0; i < bands.length; i++) worst = Math.max(worst, Math.abs(bands[i][3] - Double.parseDouble(alphas[i])));
+            wn++;
+            boolean same = x.kind.equals(p[3]) && Math.abs(x.intensity - Double.parseDouble(p[4])) < 1e-9
+                && Math.abs(x.cloud - Double.parseDouble(p[5])) < 1e-8 && Math.abs(x.wind - Double.parseDouble(p[6])) < 1e-8
+                && layers.toString().equals(p[7]) && worst < 2e-6;
+            if (!same) { wbad++; if (wbad < 4) System.out.println("  weather " + line.substring(0, Math.min(60, line.length())) + " java " + x.kind + " " + layers); }
+        }
+        check(wbad == 0, "weather for " + wn + " reports identical (" + wbad + " differ)");
 
         // --- zones
         Map<String, double[]> zones = Zones.parseZoneTable(new String(Files.readAllBytes(repo.resolve("assets/data/zone.tab")), "UTF-8"));

@@ -2,11 +2,12 @@
 // It composes the layers the same way the GNOME extension does, so it is a
 // faithful reference for previews and for checking the other renderers.
 //
-//   gjs -m tools/render-scene.js THEME FRAME ELAPSED OUT.png [ZOOM]
+//   gjs -m tools/render-scene.js THEME FRAME ELAPSED OUT.png [ZOOM] [WEATHER]
 //
 //   THEME    coast | dunes | plateau | oasis | amman
 //   FRAME    lighting frame 0..1999 (e.g. 1000 = solar noon)
 //   ELAPSED  animation clock in seconds (clouds, waves, grass)
+//   WEATHER  off | clear | cloudy | fog | drizzle | rain | storm | snow
 import Cairo from 'cairo';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import GLib from 'gi://GLib';
@@ -18,8 +19,9 @@ import { CLOUDS, cloudPosition, paintCloud, paintGrass, paintWater } from '../co
 import { COAST_HALF, makeCloudMasks } from '../core/shapes.js';
 import { createSky, lighting } from '../core/sky.js';
 import { layerName, terrainBlend } from '../core/themes.js';
+import { paintWeather, weatherForMode } from '../core/weather.js';
 
-const [theme = 'coast', frameArg = '1000', elapsedArg = '0', outPath = 'scene.png', zoomArg = '1'] = ARGV;
+const [theme = 'coast', frameArg = '1000', elapsedArg = '0', outPath = 'scene.png', zoomArg = '1', weatherMode = 'off'] = ARGV;
 const frame = Number(frameArg);
 const elapsed = Number(elapsedArg);
 const zoom = Number(zoomArg);
@@ -129,5 +131,8 @@ if (theme === 'oasis') {
         cr.restore();
     });
 }
+const weather = weatherForMode(weatherMode);
+if (weather)
+    paintWeather(cairoPainter(cr), elapsed, light, weather);
 surface.writeToPNG(outPath);
 print(`wrote ${outPath}`);

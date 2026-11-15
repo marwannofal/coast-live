@@ -110,6 +110,14 @@ export function solarFrame(time, schedule) {
     return Math.min(1999, anchors[anchors.length - 1][1]);
 }
 
+// The lighting frame for a chosen time of day instead of the real clock: `minutes` after local midnight today,
+// as seen from this place (so 12:00 is about noon, 21:00 is evening or night depending on the season).
+export function fixedTimeFrame(tracker, now, minutes, latitude, longitude) {
+    const midnight = new Date(now);
+    midnight.setHours(0, 0, 0, 0);
+    return tracker.frameAt(midnight.getTime() + minutes * MINUTE, latitude, longitude);
+}
+
 // Keeps today's schedule so that asking for the frame every few seconds is cheap.
 export class SolarTracker {
     constructor() {

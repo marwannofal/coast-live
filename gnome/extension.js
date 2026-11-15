@@ -17,8 +17,12 @@ import { fxTop, paintDesert, palmAngle } from './core/desert.js';
 import { CLOUDS, cloudPosition, paintCloud, paintGrass, paintWater } from './core/scene.js';
 import { COAST_HALF, makeCloudMasks } from './core/shapes.js';
 import { createSky, lighting } from './core/sky.js';
-import { SolarTracker } from './core/solar-clock.js';
+import { SolarTracker, fixedTimeFrame } from './core/solar-clock.js';
 import { layerName, stillName, terrainBlend } from './core/themes.js';
+import {
+    flashAlpha, isVisible, layerPeriod, paintLayer, paintOverlay, particleStyle, weatherForMode, weatherLayers,
+} from './core/weather.js';
+import { WeatherFeed } from './weather.js';
 
 const ANIMATION_INTERVAL_MS = { economy: 125, balanced: 67, smooth: 40, ultra: 20 };
 const SOLAR_INTERVAL = 3_000_000;
@@ -76,6 +80,9 @@ export default class CoastLive extends Extension {
             this._motionStart = GLib.get_monotonic_time();
             this._elapsed = 0;
             this._solar = new SolarTracker();
+            this._weatherDirty = true;
+            this._feed = new WeatherFeed(() => this._location.resolve(this._settings).coordinates, () => { this._weatherDirty = true; });
+            this._applyWeatherMode();
             this._frame = -1;
             this._stills = [];
             this._prepareSky();
@@ -93,6 +100,9 @@ export default class CoastLive extends Extension {
             this._settingsSignals = [
                 this._settings.connect('changed::animation-speed', () => this._startAnimation()),
                 this._settings.connect('changed::match-gnome-background', () => this._configureBackgroundSync()),
+                this._settings.connect('changed::weather-mode', () => this._applyWeatherMode()),
+                this._settings.connect('changed::time-mode', () => this._nextSolar = 0),
+                this._settings.connect('changed::fixed-minutes', () => this._nextSolar = 0),
                 this._settings.connect('changed::theme', () => {
                     this._theme = this._settings.get_string('theme');
                     this._terrainCache.clear();
@@ -109,6 +119,20 @@ export default class CoastLive extends Extension {
             this.disable();
             throw error;
         }
+    }
+
+    // The weather to draw: a fixed one, the last report of the real weather, or none.
+    _weather() {
+        const mode = this._settings?.get_string('weather-mode');
+        return mode === 'live' ? this._feed?.weather ?? null : weatherForMode(mode);
+    }
+
+    _applyWeatherMode() {
+        if (this._settings.get_string('weather-mode') === 'live')
+            this._feed.start();
+        else
+            this._feed.stop();
+        this._weatherDirty = true;
     }
 
     _startAnimation() {
@@ -232,7 +256,10 @@ export default class CoastLive extends Extension {
     _updateSolarFrame() {
         const time = Date.now();
         const { coordinates } = this._location.resolve(this._settings, time);
-        const frame = this._solar.frameAt(time, ...coordinates);
+        const fixed = this._settings.get_string('time-mode') === 'fixed';
+        const frame = fixed
+            ? fixedTimeFrame(this._solar, time, this._settings.get_int('fixed-minutes'), ...coordinates)
+            : this._solar.frameAt(time, ...coordinates);
         if (frame === this._frame) {
             this._syncBackground();
             return false;
@@ -317,8 +344,23 @@ export default class CoastLive extends Extension {
                 scene.add_child(crown);
                 return { crown, layers: newLayers(crown, x2 - x1, y2 - y1) };
             }) : [];
+            // Overcast, fog and lightning: one picture, redrawn only when the light or weather changes (or a flash).
+            const weatherArea = drawingArea(WIDTH, HEIGHT, (paint, cr) => {
+                const weather = this._weather();
+                if (!weather)
+                    return;
+                paintOverlay(paint, this._light, weather);
+                const flash = flashAlpha(this._elapsed, weather);
+                if (flash > 0) {
+                    cr.setSourceRGBA(235 / 255, 240 / 255, 1, flash);
+                    cr.rectangle(0, 0, WIDTH, HEIGHT);
+                    cr.fill();
+                }
+            });
+            weatherArea.visible = false;
+            scene.add_child(weatherArea);
             this._group.add_child(root);
-            this._views.push({ root, clouds, shore, terrain, palms, skyScale });
+            this._views.push({ root, scene, clouds, shore, terrain, palms, skyScale, weatherArea, fall: [], fallKey: '' });
         }
         this._updateTerrain();
         for (const view of this._views)
@@ -354,6 +396,70 @@ export default class CoastLive extends Extension {
             for (const [i, palm] of view.palms.entries())
                 palm.crown.rotation_angle_z = palmAngle(i, this._elapsed);
             view.shore.queue_repaint();
+            const weather = this._weather();
+            const visible = !!weather && isVisible(weather);
+            view.weatherArea.visible = visible;
+            // Overcast and fog are still pictures, redrawn when the light or weather changes (and while lightning
+            // flashes). Rain and snow are drawn once and scrolled by the GPU (see _syncFall): no per-frame work.
+            const flash = visible ? flashAlpha(this._elapsed, weather) : 0;
+            if (visible && (repaintClouds || this._weatherDirty || flash > 0 || view.flashing)) {
+                view.weatherArea.queue_repaint();
+                view.flashing = flash > 0;
+            }
+            this._syncFall(view, weather, repaintClouds || this._weatherDirty);
+        }
+        this._weatherDirty = false;
+    }
+
+    // Falling rain / snow: each layer is a tall picture painted once, then eased down forever on the GPU.
+    _syncFall(view, weather, lightChanged) {
+        const layers = weather ? weatherLayers(weather) : [];
+        const key = layers.length
+            ? [weather.kind, weather.intensity.toFixed(2), weather.wind.toFixed(2)].join(':')
+            : '';
+        if (key !== view.fallKey) {
+            for (const layer of view.fall) {
+                layer.alive = false;
+                layer.actor.remove_all_transitions();
+                layer.actor.destroy();
+            }
+            view.fall = layers.map((def, index) => {
+                const snow = weather.kind === 'snow';
+                const layer = { def, alive: true };
+                layer.actor = drawingArea(WIDTH, HEIGHT * 2, (paint, cr) => {
+                    // Two copies stacked, so that scrolling by one HEIGHT loops seamlessly. The colour is the
+                    // daytime one; the layer's opacity carries the time of day.
+                    for (let copy = 0; copy < 2; copy++) {
+                        paint.color(snow ? [250, 252, 255] : [215, 225, 245], 1);
+                        paintLayer(paint, weather, index, WIDTH, 0);
+                        paint.fill();
+                        cr.translate(0, HEIGHT);
+                    }
+                });
+                layer.actor.set_position(0, -HEIGHT);
+                view.scene.add_child(layer.actor);
+                const run = fraction => {
+                    if (!layer.alive)
+                        return;
+                    layer.actor.y = -HEIGHT * (1 - fraction);
+                    layer.actor.ease({
+                        y: 0,
+                        duration: Math.max(1, Math.round(layerPeriod(def) * 1000 * (1 - fraction))),
+                        mode: Clutter.AnimationMode.LINEAR,
+                        onComplete: () => run(0),
+                    });
+                };
+                run(index / 3);   // start the layers at different points of their fall
+                return layer;
+            });
+            view.fallKey = key;
+            lightChanged = true;
+        }
+        if (lightChanged && view.fall.length) {
+            const style = particleStyle(this._light, weather);
+            const dim = 0.82 + 0.18 * this._light.day / 255;
+            for (const layer of view.fall)
+                layer.actor.opacity = Math.round(255 * Math.min(1, style.alpha * layer.def.alpha * dim));
         }
     }
 
@@ -366,6 +472,8 @@ export default class CoastLive extends Extension {
     disable() {
         if (this._tickId)
             GLib.Source.remove(this._tickId);
+        this._feed?.stop();
+        this._feed = null;
         if (this._monitorSignal)
             Main.layoutManager.disconnect(this._monitorSignal);
         if (this._backgroundSignal)

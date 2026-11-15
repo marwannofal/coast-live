@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Run the built extension inside an isolated, headless GNOME Shell and report.
 # It never touches your real session: settings, data and cache live in a temp dir.
-# Usage: tests/gnome-headless.sh [THEME] [SECONDS] [SCREENSHOT.png]
+# Usage: [WEATHER=rain] tests/gnome-headless.sh [THEME] [SECONDS] [SCREENSHOT.png]
+# (It always uses fixed coordinates for Amman, so it never uses or sends your real location.)
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 theme=${1:-coast}; secs=${2:-20}; shot=${3:-}
@@ -22,6 +23,10 @@ welcome-dialog-last-shown-version='99'
 [org/gnome/shell/extensions/coast-live]
 theme='$theme'
 animation-speed='smooth'
+weather-mode='${WEATHER:-off}'
+manual-location=true
+latitude=31.95
+longitude=35.93
 KEYS
 inner=$tmp/inner.sh
 cat > "$inner" <<INNER

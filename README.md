@@ -66,6 +66,19 @@ Right-click the desktop -> *Configure Desktop and Wallpaper* -> Wallpaper type *
 **Android 7.0+**: copy `dist/coast-live.apk` to the phone and open it (allow installs from this source), open
 **Coast Live**, pick a scene, tap **Set wallpaper**. Swiping between home screens pans the scene.
 
+## Time of day and weather
+
+**Time of day.** By default the sky follows the real sun. In the settings you can instead *choose a time* (for example to
+keep a favourite sunset): the scene then shows that time of day at your location, every day.
+
+**Weather** (off by default). Rain, snow, fog, overcast skies and thunderstorms (with lightning) can be drawn over any
+scene. Pick a fixed weather (works fully offline), or **Match the real weather**: then the wallpaper asks
+[Open-Meteo](https://open-meteo.com) (free, no account) every 30 minutes for the current conditions at your location.
+**Privacy:** this is the only network use in the whole project. A request carries your approximate position rounded to
+0.1 degree (about 11 km) and nothing else; in every other mode nothing is ever sent. Rain and snow are drawn once and
+scrolled by the GPU (GNOME, KDE) so they cost almost nothing; fog and overcast are tinted bands over the picture.
+On Android the weather needs the INTERNET permission, which the app only uses in that mode.
+
 ## Location and the sun
 
 By default the sun follows your **system time zone**, using the zone's representative city from the IANA
@@ -98,6 +111,8 @@ renders a complete scene with the GNOME code path.
   at 400 instants/places, time-zone lookup, and 23 million sky pixel values (identical).
 * The **GNOME (Cairo) and Java renderers** agree on six scenes at several times of day (mean difference
   0.04-0.16 of 255); the **QML scene** is close (0.2-1.6 of 255; it uses gradients and sprites, not per-pixel images).
+* **Time of day and weather**: the chosen-time frames, every weather code and the Open-Meteo parser (`tests/fixed-time.mjs`,
+  `tests/weather.mjs`), and the Java port against the JavaScript on the same reports.
 * The **KDE scene stays light**: `tests/kde-perf.sh` runs it with Qt's software renderer (no GPU, so
   pessimistic) and requires under 25% of one core (measured 6-9%) and no script errors.
 * The GNOME extension loads and runs in an isolated, **headless GNOME Shell** for all four scenes.
@@ -124,6 +139,9 @@ The current scene follows the same idea as Wallpaper Engine: **a few cheap piece
   `qmllint` and import modules present on Plasma 6, but were not loaded into a running desktop. The time zone comes
   from Plasma's `time` data engine (falls back to the clock offset).
 * **GNOME 45-50.** Tested headless on GNOME 51 only; the extension uses the same APIs as v4.
+* **Weather on GNOME and KDE in a live session.** The weather drawing is checked against the other renderers and the
+  extension loads with every weather setting, but I have not watched rain fall on a real GNOME desktop. The live fetch
+  was tested (`tests/weather-live.sh`), the Plasma and Android fetches were not.
 
 ## Licensing and credits
 

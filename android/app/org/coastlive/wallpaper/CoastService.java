@@ -18,12 +18,16 @@ import org.coastlive.core.SceneComposer;
 import org.coastlive.core.Sky;
 import org.coastlive.core.SolarClock;
 import org.coastlive.core.Themes;
+import org.coastlive.core.Weather;
 import org.coastlive.core.Zones;
 
 /** The live wallpaper: the sky follows the sun for the device's time zone, offline. */
 public class CoastService extends WallpaperService {
     static final String PREFS = "coastlive";
     static final String KEY_THEME = "theme";
+    static final String KEY_WEATHER_MODE = "weatherMode";   // off, live, or a fixed weather (rain, fog, ...)
+    static final String KEY_TIME_MODE = "timeMode";       // "auto" or "fixed"
+    static final String KEY_FIXED_MINUTES = "fixedMinutes";   // minutes after midnight
     private static final long FRAME_MS = 33;          // ~30 FPS
     private static final double SOLAR_INTERVAL_S = 3;
 
@@ -43,6 +47,10 @@ public class CoastService extends WallpaperService {
         private Sky.Light light;
         private int frame = -1;
         private double nextSolar;
+        // "Match the real weather": the last report, and when to ask again (package-private: used from a thread).
+        volatile Weather liveWeather;
+        volatile boolean fetching;
+        long nextWeatherFetch;
         private long start;
         private int width, height;
         private float xOffset = 0.5f;
@@ -81,6 +89,10 @@ public class CoastService extends WallpaperService {
         }
 
         @Override public void onSharedPreferenceChanged(SharedPreferences p, String key) {
+            if (KEY_TIME_MODE.equals(key) || KEY_FIXED_MINUTES.equals(key)) {
+                nextSolar = 0;
+                return;
+            }
             if (KEY_THEME.equals(key) && handler != null)
                 handler.post(new Runnable() { @Override public void run() { prepare(); drawFrame(); } });
         }
@@ -147,12 +159,53 @@ public class CoastService extends WallpaperService {
 
         private void updateSolar() {
             double[] place = coordinates();
-            int next = tracker.frameAt(System.currentTimeMillis(), place[0], place[1]);
+            int next = "fixed".equals(prefs.getString(KEY_TIME_MODE, "auto"))
+                ? SolarClock.fixedTimeFrame(tracker, System.currentTimeMillis(), prefs.getInt(KEY_FIXED_MINUTES, 720), place[0], place[1])
+                : tracker.frameAt(System.currentTimeMillis(), place[0], place[1]);
             if (next == frame) return;
             frame = next;
             light = Sky.lighting(next);
             sky.renderFrame(next, rgb);
             surface.setSky(rgb, composer.skyRows);
+        }
+
+        private Weather currentWeather() {
+            String mode = prefs.getString(KEY_WEATHER_MODE, "off");
+            if (!"live".equals(mode)) return Weather.forMode(mode);
+            long now = System.currentTimeMillis();
+            if (!fetching && now >= nextWeatherFetch) {
+                fetching = true;
+                final double[] place = coordinates();
+                new Thread(new Runnable() {
+                    @Override public void run() { fetchWeather(place[0], place[1]); }
+                }).start();
+            }
+            return liveWeather;
+        }
+
+        void fetchWeather(double latitude, double longitude) {
+            java.net.HttpURLConnection connection = null;
+            try {
+                connection = (java.net.HttpURLConnection) new java.net.URL(Weather.url(latitude, longitude)).openConnection();
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(15000);
+                connection.setRequestProperty("User-Agent", "coast-live-wallpaper");
+                if (connection.getResponseCode() != 200) throw new java.io.IOException("HTTP " + connection.getResponseCode());
+                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                try (InputStream in = connection.getInputStream()) {
+                    byte[] buffer = new byte[4096];
+                    for (int n; (n = in.read(buffer)) > 0; ) bytes.write(buffer, 0, n);
+                }
+                org.json.JSONObject current = new org.json.JSONObject(bytes.toString("UTF-8")).getJSONObject("current");
+                liveWeather = Weather.fromCurrent(current.getInt("weather_code"), current.optDouble("cloud_cover", 0),
+                    current.optDouble("wind_speed_10m", 0));
+                nextWeatherFetch = System.currentTimeMillis() + Weather.REFRESH_MS;
+            } catch (Exception e) {
+                nextWeatherFetch = System.currentTimeMillis() + 5 * 60_000L;   // offline: try again in 5 minutes
+            } finally {
+                if (connection != null) connection.disconnect();
+                fetching = false;
+            }
         }
 
         private void drawFrame() {
@@ -163,6 +216,8 @@ public class CoastService extends WallpaperService {
                 nextSolar = elapsed + SOLAR_INTERVAL_S;
             }
             composer.compose(surface, light, frame, elapsed);
+            Weather weather = currentWeather();
+            if (weather != null) Weather.paint(surface, elapsed, light, weather);
             SurfaceHolder holder = getSurfaceHolder();
             Canvas canvas = Build.VERSION.SDK_INT >= 26 ? holder.lockHardwareCanvas() : holder.lockCanvas();
             if (canvas == null) return;

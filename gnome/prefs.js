@@ -5,6 +5,7 @@ import Gtk from 'gi://Gtk';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import { THEMES, THEME_NAMES } from './core/themes.js';
+import { WEATHER_MODES, WEATHER_MODE_NAMES } from './core/weather.js';
 import { LocalLocation } from './location.js';
 
 const MODES = ['economy', 'balanced', 'smooth', 'ultra'];
@@ -77,6 +78,60 @@ export default class CoastLivePreferences extends ExtensionPreferences {
         for (const row of [effective, manual, latitude, longitude])
             place.add(row);
         page.add(place);
+
+        const timeGroup = new Adw.PreferencesGroup({
+            title: 'Time of day',
+            description: 'Follow the sun automatically, or show a fixed time of day (for example to keep a favourite sunset).',
+        });
+        const timeMode = new Adw.ComboRow({
+            title: 'Time',
+            model: Gtk.StringList.new(['Automatic (follow the sun)', 'Choose a time']),
+            selected: settings.get_string('time-mode') === 'fixed' ? 1 : 0,
+        });
+        const hour = Adw.SpinRow.new_with_range(0, 23, 1);
+        hour.title = 'Hour';
+        const minute = Adw.SpinRow.new_with_range(0, 59, 5);
+        minute.title = 'Minute';
+        const loadTime = () => {
+            const minutes = settings.get_int('fixed-minutes');
+            hour.value = Math.floor(minutes / 60);
+            minute.value = minutes % 60;
+        };
+        const saveTime = () => settings.set_int('fixed-minutes', Math.round(hour.value) * 60 + Math.round(minute.value));
+        loadTime();
+        hour.connect('notify::value', saveTime);
+        minute.connect('notify::value', saveTime);
+        const updateTimeRows = () => {
+            const fixed = timeMode.selected === 1;
+            hour.sensitive = fixed;
+            minute.sensitive = fixed;
+        };
+        timeMode.connect('notify::selected', () => {
+            settings.set_string('time-mode', timeMode.selected === 1 ? 'fixed' : 'auto');
+            updateTimeRows();
+        });
+        updateTimeRows();
+        for (const row of [timeMode, hour, minute])
+            timeGroup.add(row);
+        page.add(timeGroup);
+
+        const weatherGroup = new Adw.PreferencesGroup({
+            title: 'Weather',
+            description: 'Show rain, snow, fog or storms over the scene. “Match the real weather” asks open-meteo.com every 30 minutes '
+                + 'and sends your approximate position (rounded to about 11 km); nothing is sent in the other modes.',
+        });
+        const weatherMode = new Adw.ComboRow({
+            title: 'Weather',
+            model: Gtk.StringList.new(WEATHER_MODE_NAMES),
+            selected: Math.max(0, WEATHER_MODES.indexOf(settings.get_string('weather-mode'))),
+        });
+        weatherMode.connect('notify::selected', () => {
+            const mode = WEATHER_MODES[weatherMode.selected];
+            if (mode)
+                settings.set_string('weather-mode', mode);
+        });
+        weatherGroup.add(weatherMode);
+        page.add(weatherGroup);
 
         const appearance = new Adw.PreferencesGroup({ title: 'Appearance' });
         const matchBackground = new Adw.SwitchRow({

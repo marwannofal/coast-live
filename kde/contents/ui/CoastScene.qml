@@ -15,6 +15,7 @@ import QtQuick
 import "../code/config.mjs" as Config
 import "../code/desert.mjs" as Desert
 import "../code/flag.mjs" as Flag
+import "../code/weather.mjs" as WeatherCore
 import "../code/layout.mjs" as Layout
 import "../code/math.mjs" as MathX
 import "../code/scene.mjs" as SceneCore
@@ -32,6 +33,11 @@ Item {
     // ---- inputs
     property string theme: "coast"
     property int frameInterval: 100
+    // Weather: "off", "live" (liveWeather comes from the network, see main.qml), or a fixed one (rain, fog, ...).
+    property string weatherMode: "off"
+    property var liveWeather: null
+    property string timeMode: "auto"
+    property int fixedMinutes: 720
     property bool manualLocation: false
     property real latitude: 0
     property real longitude: 0
@@ -75,6 +81,12 @@ Item {
     property var tuftItems: []
     property var dustItems: []
     property var flagItems: []
+    property var weatherBandItems: []
+    property var weatherLayerList: []       // the rain / snow layers of the current weather
+    property var weatherTiles: []           // one small tile picture (PNG url) per layer, scrolled by the GPU
+    property real weatherAlpha: 1
+    readonly property var weather: weatherMode === "live" ? liveWeather : WeatherCore.weatherForMode(weatherMode)
+    onWeatherChanged: { rebuildWeatherLayers(); updateWeatherColors(); }
     property var flagColors: ({ black: "black", white: "white", green: "green", red: "red" })
     property var glintItems: []
     property var staticTuftItems: []
@@ -177,6 +189,7 @@ Item {
                 enqueue("stuft" + i, () => makeStaticTuftSprite(i, positions[i], style));
         }
         updateDesertColors();
+        updateWeatherColors();
         nextCloudTint = 0;
     }
 
@@ -245,12 +258,54 @@ Item {
         }
     }
 
-    // ---- every tick: move things
+    // Rain and snow: each layer is drawn ONCE into a small tile (queued, so a tick never does much) and then
+    // scrolled forever by the GPU (see the Repeater at the end of the scene). No per-frame script work.
+    readonly property int weatherTileWidth: 240
+    function rebuildWeatherLayers() {
+        weatherTiles = [];
+        weatherLayerList = weather ? WeatherCore.weatherLayers(weather) : [];
+        const wanted = weather;
+        for (let i = 0; i < weatherLayerList.length; i++) {
+            const index = i;
+            enqueue("weatherTile" + i, () => {
+                if (weather !== wanted)
+                    return;
+                const painter = new Sprites.SpritePainter(weatherTileWidth, Config.HEIGHT);
+                painter.color(wanted.kind === "snow" ? [250, 252, 255] : [215, 225, 245], 1);
+                WeatherCore.paintLayer(painter, wanted, index, weatherTileWidth, 0);
+                painter.fill();
+                const tiles = weatherTiles.slice();
+                tiles[index] = painter.toUrl();
+                weatherTiles = tiles;
+            });
+        }
+    }
+
+    function updateWeatherColors() {
+        if (!weather || !light) {
+            for (let i = 0; i < weatherBandItems.length; i++)
+                weatherBandItems[i].visible = false;
+            weatherFlash.opacity = 0;
+            return;
+        }
+        const bands = WeatherCore.weatherBands(light, weather);
+        for (let i = 0; i < weatherBandItems.length && i < bands.length; i++) {
+            weatherBandItems[i].color = rgba(bands[i].color, bands[i].alpha);
+            weatherBandItems[i].visible = bands[i].alpha >= 0.003;
+        }
+        weatherAlpha = WeatherCore.particleStyle(light, weather).alpha * (0.82 + 0.18 * light.day / 255);
+        if (weather.kind !== "storm")
+            weatherFlash.opacity = 0;
+    }
+
+        // ---- every tick: move things
     function tick() {
         elapsed = testFrame >= 0 ? testElapsed : (Date.now() - startTime) / 1000;
         if (elapsed >= nextSolar) {
             const place = coordinates();
-            const next = testFrame >= 0 ? testFrame : tracker.frameAt(Date.now(), place[0], place[1]);
+            const next = testFrame >= 0 ? testFrame
+                : timeMode === "fixed" ? SolarClock.fixedTimeFrame(tracker, Date.now(), fixedMinutes, place[0], place[1])
+                : tracker.frameAt(Date.now(), place[0], place[1]);
             if (next !== frame)
                 onFrameChanged(next);
             nextSolar = elapsed + 3;
@@ -311,6 +366,8 @@ Item {
             }
             palmAngles = [Desert.palmAngle(0, elapsed), Desert.palmAngle(1, elapsed)];
         }
+        if (weather && weather.kind === "storm")
+            weatherFlash.opacity = WeatherCore.flashAlpha(elapsed, weather);
         pump(frame >= 0 && testFrame < 0 && elapsed < 6 ? 25 : 8);
     }
 
@@ -564,6 +621,54 @@ Item {
                     visible: opacity > 0
                 }
             }
+        }
+
+        // ---------- Weather: overcast and fog (tinted bands), rain / snow (particles), lightning
+        Repeater {
+            model: WeatherCore.BAND_COUNT
+            delegate: Rectangle {
+                required property int index
+                x: 0
+                y: index * WeatherCore.BAND_HEIGHT
+                width: Config.WIDTH
+                height: WeatherCore.BAND_HEIGHT
+                color: "transparent"
+                visible: false
+            }
+            onItemAdded: function (index, item) { root.weatherBandItems[index] = item; }
+        }
+        Repeater {
+            model: 3
+            delegate: Item {
+                id: fall
+                required property int index
+                readonly property var def: root.weatherLayerList.length > index ? root.weatherLayerList[index] : null
+                readonly property string tile: root.weatherTiles.length > index && root.weatherTiles[index] ? root.weatherTiles[index] : ""
+                visible: def !== null && tile !== ""
+                width: Config.WIDTH
+                height: 2 * Config.HEIGHT
+                opacity: def ? def.alpha * root.weatherAlpha : 0
+                YAnimator on y {
+                    from: -Config.HEIGHT
+                    to: 0
+                    duration: fall.def ? Math.round(WeatherCore.layerPeriod(fall.def) * 1000) : 1000
+                    loops: Animation.Infinite
+                    running: fall.visible
+                }
+                Image {
+                    anchors.fill: parent
+                    source: fall.tile
+                    fillMode: Image.Tile
+                    smooth: false
+                }
+            }
+        }
+        Rectangle {
+            id: weatherFlash
+            width: Config.WIDTH; height: Config.HEIGHT
+            color: "#ebf0ff"
+            opacity: 0
+            visible: opacity > 0
         }
     }
 }

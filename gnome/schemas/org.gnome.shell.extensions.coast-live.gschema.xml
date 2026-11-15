@@ -15,6 +15,34 @@
       <default>0.0</default>
       <summary>Custom longitude</summary>
     </key>
+    <key name="time-mode" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="fixed"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Time of day: follow the sun, or show a chosen time</summary>
+    </key>
+    <key name="fixed-minutes" type="i">
+      <range min="0" max="1439"/>
+      <default>720</default>
+      <summary>The chosen time of day, in minutes after midnight</summary>
+    </key>
+    <key name="weather-mode" type="s">
+      <choices>
+        <choice value="off"/>
+        <choice value="live"/>
+        <choice value="clear"/>
+        <choice value="cloudy"/>
+        <choice value="fog"/>
+        <choice value="drizzle"/>
+        <choice value="rain"/>
+        <choice value="storm"/>
+        <choice value="snow"/>
+      </choices>
+      <default>'off'</default>
+      <summary>Weather shown over the scene: off, the real weather, or a fixed one</summary>
+    </key>
     <key name="match-gnome-background" type="b">
       <default>true</default>
       <summary>Show a Coast Live still in GNOME Appearance and Activities</summary>

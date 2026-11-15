@@ -7,7 +7,8 @@ from PIL import Image
 
 # Mean absolute difference allowed, in levels of 255. Java is a port and must be near-identical; the QML
 # scene is drawn with gradients and sprites instead of per-pixel images, so it is only close.
-LIMIT = {'java': 0.5, 'qml': 3.0}
+# (Java is allowed 0.7: large translucent overlays, i.e. weather, round alpha slightly differently from Cairo.)
+LIMIT = {'java': 0.7, 'qml': 3.0}
 folder = Path(sys.argv[1])
 failed = False
 print(f"{'scene':<16}{'renderer':<9}{'mean diff':>10}{'p99':>6}  verdict")

@@ -6,6 +6,7 @@ import { COAST, makeCloudMasks } from '../core/shapes.js';
 import { SolarTracker } from '../core/solar-clock.js';
 import { parseZoneLinks, parseZoneTable, resolveCoordinates } from '../core/zones.js';
 import { seededRandom } from '../core/math.js';
+import { weatherBands, weatherFromCurrent, weatherLayers } from '../core/weather.js';
 
 const out = process.argv[2];
 fs.mkdirSync(`${out}/frames`, { recursive: true });
@@ -41,6 +42,17 @@ w('zones.txt', names.map(n => {
     const r = resolveCoordinates(zones, links, n, 10800);
     return [n.replace(/ /g, '_'), 10800, r.coordinates[0], r.coordinates[1], r.source].join(' ');
 }));
+
+// Weather: every WMO code at a few cloud covers / winds, the band colours and the layer counts.
+const weatherLines = [];
+for (const code of [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99, 12])
+    for (const [cover, wind] of [[0, 0], [55, 12.5], [100, 60]]) {
+        const x = weatherFromCurrent({ weather_code: code, cloud_cover: cover, wind_speed_10m: wind });
+        const layers = weatherLayers(x).map(l => l.count).join(',') || '-';
+        const bands = weatherBands(lighting(1000), x).map(b => b.alpha.toFixed(6)).join(',');
+        weatherLines.push([code, cover, wind, x.kind, x.intensity, x.cloud.toFixed(9), x.wind.toFixed(9), layers, bands].join(' '));
+    }
+w('weather.txt', weatherLines);
 
 const sky = createSky();
 const buf = new Uint8Array(sky.byteLength);

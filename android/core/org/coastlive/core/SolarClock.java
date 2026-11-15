@@ -150,6 +150,17 @@ public final class SolarClock {
         return Math.min(1999, a.get(a.size() - 1).frame);
     }
 
+    /** The frame for a chosen time of day (minutes after local midnight today) instead of the real clock. */
+    public static int fixedTimeFrame(Tracker tracker, long now, int minutes, double lat, double lon) {
+        java.util.Calendar midnight = java.util.Calendar.getInstance();
+        midnight.setTimeInMillis(now);
+        midnight.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        midnight.set(java.util.Calendar.MINUTE, 0);
+        midnight.set(java.util.Calendar.SECOND, 0);
+        midnight.set(java.util.Calendar.MILLISECOND, 0);
+        return tracker.frameAt(midnight.getTimeInMillis() + minutes * 60_000.0, lat, lon);
+    }
+
     /** Keeps today's schedule so that asking for the frame every few seconds is cheap. */
     public static final class Tracker {
         private Schedule schedule;

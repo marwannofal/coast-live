@@ -5,8 +5,9 @@ import java.io.File;
 import javax.imageio.ImageIO;
 import org.coastlive.core.SceneComposer;
 import org.coastlive.core.Sky;
+import org.coastlive.core.Weather;
 
-/** Renders a scene with the Java core. Usage: RenderScene ASSETS_THEMES_DIR THEME FRAME ELAPSED OUT.png */
+/** Renders a scene with the Java core. Usage: RenderScene ASSETS_THEMES_DIR THEME FRAME ELAPSED OUT.png [WEATHER] */
 public final class RenderScene {
     public static void main(String[] a) throws Exception {
         System.setProperty("java.awt.headless", "true");
@@ -20,6 +21,8 @@ public final class RenderScene {
         AwtSurface surface = new AwtSurface(new File(a[0]));
         surface.setSky(rgb, composer.skyRows);
         composer.compose(surface, Sky.lighting(frame), frame, elapsed);
+        Weather weather = a.length > 5 ? Weather.forMode(a[5]) : null;
+        if (weather != null) Weather.paint(surface, elapsed, Sky.lighting(frame), weather);
         ImageIO.write(surface.image, "png", new File(a[4]));
     }
 }
