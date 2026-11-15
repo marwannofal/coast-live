@@ -475,10 +475,12 @@ Item {
             height: Config.HEIGHT
             Image {
                 source: root.desert ? root.layerSource("ground", root.terrain.lower) : ""
+                width: Config.WIDTH; height: Config.HEIGHT    // the art may be stored at 2x (Amman)
                 asynchronous: false
             }
             Image {
                 source: root.desert ? root.layerSource("ground", root.terrain.upper) : ""
+                width: Config.WIDTH; height: Config.HEIGHT
                 asynchronous: false
                 opacity: root.terrain.opacity / 255
                 visible: opacity > 0

@@ -74,7 +74,10 @@ final class AwtSurface implements Surface {
             try { return ImageIO.read(new File(assets, p)); } catch (IOException e) { throw new RuntimeException(e); }
         });
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) alpha));
-        g.drawImage(layer, 0, 0, null);
+        if (layer.getWidth() > Config.WIDTH)   // full-frame art may be stored at 2x (Amman)
+            g.drawImage(layer, 0, 0, Config.WIDTH, Config.HEIGHT, null);
+        else
+            g.drawImage(layer, 0, 0, null);
         g.setComposite(AlphaComposite.SrcOver);
     }
 }

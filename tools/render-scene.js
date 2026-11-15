@@ -87,8 +87,12 @@ for (const spec of CLOUDS) {
 
 const layer = (file, alpha, x = 0, y = 0) => {
     const image = Cairo.ImageSurface.createFromPNG(`${themes}/${theme}/${file}`);
+    cr.save();
+    if (image.getWidth() > WIDTH)    // full-frame art may be stored at 2x (Amman)
+        cr.scale(WIDTH / image.getWidth(), HEIGHT / image.getHeight());
     cr.setSourceSurface(image, x, y);
     cr.paintWithAlpha(alpha);
+    cr.restore();
 };
 const blendedLayers = (prefix, x, y) => {
     const { lower, upper, opacity } = terrainBlend(layout.anchors, frame);

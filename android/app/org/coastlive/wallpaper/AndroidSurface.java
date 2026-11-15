@@ -108,7 +108,10 @@ final class AndroidSurface implements Surface {
             layers.put(assetPath, bitmap);
         }
         layerPaint.setAlpha(clamp255(alpha * 255));
-        canvas.drawBitmap(bitmap, 0, 0, layerPaint);
+        if (bitmap.getWidth() > Config.WIDTH)   // full-frame art may be stored at 2x (Amman); sprites keep their size
+            canvas.drawBitmap(bitmap, null, new android.graphics.Rect(0, 0, Config.WIDTH, Config.HEIGHT), layerPaint);
+        else
+            canvas.drawBitmap(bitmap, 0, 0, layerPaint);
     }
 
     /** Scale the composed scene to cover the screen, panned horizontally by xOffset (0..1). */
