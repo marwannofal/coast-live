@@ -1,0 +1,2 @@
+coast-live-layered.shell-extension.zip filter=lfs diff=lfs merge=lfs -text
+coast-live-worlds.apk filter=lfs diff=lfs merge=lfs -text
